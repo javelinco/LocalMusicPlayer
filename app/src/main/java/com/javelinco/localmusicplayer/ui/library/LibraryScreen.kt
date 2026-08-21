@@ -24,7 +24,6 @@ import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -76,6 +75,7 @@ data class LibraryActions(
     val onCloseSearch: () -> Unit = {},
     val onSearch: (String) -> Unit = {},
     val onPlayTrack: (TrackEntity) -> Unit = {},
+    val onPlayTracks: (List<TrackEntity>) -> Unit = {},
     val onPlayNext: (TrackEntity) -> Unit = {},
     val onAddToQueue: (TrackEntity) -> Unit = {},
     val onRemoveTrackFromLibrary: (TrackEntity) -> Unit = {},
@@ -100,7 +100,7 @@ data class LibraryActions(
 @OptIn(ExperimentalMaterial3Api::class)
 fun LibraryScreen(state: LibraryScreenState, actions: LibraryActions) {
     var menuExpanded by remember { mutableStateOf(false) }
-    var openedGroup by remember(state.selectedView) { mutableStateOf<OpenedMetadataGroup?>(null) }
+    var openedGroup by remember(state.selectedView) { mutableStateOf<OpenedLibraryGroup?>(null) }
     var pendingAddition by remember { mutableStateOf<PendingPlaylistAddition?>(null) }
     var pendingInformation by remember { mutableStateOf<TrackEntity?>(null) }
     var localRequestedArtist by remember { mutableStateOf<String?>(null) }
@@ -109,16 +109,23 @@ fun LibraryScreen(state: LibraryScreenState, actions: LibraryActions) {
         pendingAddition = PendingPlaylistAddition(track.title ?: track.fileName, listOf(track.trackId))
     }
 
-    fun requestGroupAddition(view: LibraryView, group: NamedGroupSummary) {
-        val trackIds = tracksForMetadataGroup(view, group.normalizedName, state.tracks)
-            .map(TrackEntity::trackId)
-        pendingAddition = PendingPlaylistAddition(group.displayName, trackIds)
+    fun tracksFor(group: OpenedLibraryGroup): List<TrackEntity> = tracksForOpenedGroup(group, state.tracks)
+
+    fun playAll(group: OpenedLibraryGroup) {
+        tracksFor(group).takeIf { it.isNotEmpty() }?.let(actions.onPlayTracks)
+    }
+
+    fun requestGroupAddition(group: OpenedLibraryGroup) {
+        pendingAddition = PendingPlaylistAddition(
+            group.title,
+            tracksFor(group).map(TrackEntity::trackId),
+        )
     }
 
     LaunchedEffect(state.requestedArtist, localRequestedArtist, state.artists, state.selectedView) {
         (localRequestedArtist ?: state.requestedArtist)?.let { normalized ->
             state.artists.find { it.normalizedName == normalized }?.let { artist ->
-                openedGroup = OpenedMetadataGroup(LibraryView.ARTISTS, artist)
+                openedGroup = OpenedLibraryGroup.Named(LibraryView.ARTISTS, artist)
                 localRequestedArtist = null
                 if (state.requestedArtist != null) actions.onArtistRequestConsumed()
             }
@@ -219,16 +226,16 @@ fun LibraryScreen(state: LibraryScreenState, actions: LibraryActions) {
 
         openedGroup?.let { opened ->
             val matchingTracks = remember(state.tracks, opened) {
-                tracksForMetadataGroup(opened.view, opened.group.normalizedName, state.tracks)
+                tracksForOpenedGroup(opened, state.tracks)
             }
             MetadataDetailScreen(
-                title = opened.group.displayName,
-                parentLabel = opened.view.label,
+                title = opened.title,
+                parentLabel = opened.parentLabel,
                 tracks = matchingTracks,
                 onBack = { openedGroup = null },
                 onPlayTrack = actions.onPlayTrack,
-                onAddTrack = ::requestTrackAddition,
-                onAddAll = { requestGroupAddition(opened.view, opened.group) },
+                onPlayAll = { playAll(opened) },
+                onAddAll = { requestGroupAddition(opened) },
                 trackActions = trackActions,
             )
             return@Column
@@ -238,10 +245,15 @@ fun LibraryScreen(state: LibraryScreenState, actions: LibraryActions) {
             is LibrarySearchResult.Tracks -> TrackList(result.items, actions.onPlayTrack, actions = trackActions)
             is LibrarySearchResult.NamedGroups -> MetadataListScreen(
                 groups = result.items,
-                onOpen = { openedGroup = OpenedMetadataGroup(state.selectedView, it) },
-                onAddToPlaylist = { requestGroupAddition(state.selectedView, it) },
+                onOpen = { openedGroup = OpenedLibraryGroup.Named(state.selectedView, it) },
+                onPlayAll = { playAll(OpenedLibraryGroup.Named(state.selectedView, it)) },
+                playAllDescription = { metadataPlayAllDescription(state.selectedView, it.displayName) },
             )
-            is LibrarySearchResult.Albums -> AlbumList(result.items)
+            is LibrarySearchResult.Albums -> AlbumListScreen(
+                albums = result.items,
+                onOpen = { openedGroup = OpenedLibraryGroup.Album(it) },
+                onPlayAll = { playAll(OpenedLibraryGroup.Album(it)) },
+            )
             is LibrarySearchResult.Playlists -> PlaylistScreen(
                 result.items,
                 state.playlistEntries,
@@ -258,9 +270,8 @@ fun LibraryScreen(state: LibraryScreenState, actions: LibraryActions) {
             null -> LibraryBrowseContent(
                 state = state,
                 actions = actions,
-                onOpenGroup = { openedGroup = OpenedMetadataGroup(state.selectedView, it) },
-                onAddTrack = ::requestTrackAddition,
-                onAddGroup = { requestGroupAddition(state.selectedView, it) },
+                onOpenGroup = { openedGroup = it },
+                onPlayGroup = ::playAll,
                 trackActions = trackActions,
             )
         }
@@ -298,16 +309,29 @@ internal fun shouldShowSourceSetupInLibrary(sourceCount: Int): Boolean = sourceC
 private fun LibraryBrowseContent(
     state: LibraryScreenState,
     actions: LibraryActions,
-    onOpenGroup: (NamedGroupSummary) -> Unit,
-    onAddTrack: (TrackEntity) -> Unit,
-    onAddGroup: (NamedGroupSummary) -> Unit,
+    onOpenGroup: (OpenedLibraryGroup) -> Unit,
+    onPlayGroup: (OpenedLibraryGroup) -> Unit,
     trackActions: TrackActionCallbacks,
 ) {
     when (state.selectedView) {
         LibraryView.TRACKS -> TrackList(state.tracks, actions.onPlayTrack, actions = trackActions)
-        LibraryView.ARTISTS -> MetadataListScreen(state.artists, onOpenGroup, onAddGroup)
-        LibraryView.ALBUMS -> AlbumList(state.albums)
-        LibraryView.GENRES -> MetadataListScreen(state.genres, onOpenGroup, onAddGroup)
+        LibraryView.ARTISTS -> MetadataListScreen(
+            groups = state.artists,
+            onOpen = { onOpenGroup(OpenedLibraryGroup.Named(LibraryView.ARTISTS, it)) },
+            onPlayAll = { onPlayGroup(OpenedLibraryGroup.Named(LibraryView.ARTISTS, it)) },
+            playAllDescription = { metadataPlayAllDescription(LibraryView.ARTISTS, it.displayName) },
+        )
+        LibraryView.ALBUMS -> AlbumListScreen(
+            albums = state.albums,
+            onOpen = { onOpenGroup(OpenedLibraryGroup.Album(it)) },
+            onPlayAll = { onPlayGroup(OpenedLibraryGroup.Album(it)) },
+        )
+        LibraryView.GENRES -> MetadataListScreen(
+            groups = state.genres,
+            onOpen = { onOpenGroup(OpenedLibraryGroup.Named(LibraryView.GENRES, it)) },
+            onPlayAll = { onPlayGroup(OpenedLibraryGroup.Named(LibraryView.GENRES, it)) },
+            playAllDescription = { metadataPlayAllDescription(LibraryView.GENRES, it.displayName) },
+        )
         LibraryView.PLAYLISTS -> PlaylistScreen(
             state.playlists,
             state.playlistEntries,
@@ -392,10 +416,37 @@ fun TrackList(
     }
 }
 
-internal data class OpenedMetadataGroup(
-    val view: LibraryView,
-    val group: NamedGroupSummary,
-)
+internal sealed interface OpenedLibraryGroup {
+    val title: String
+    val parentLabel: String
+
+    data class Named(
+        val view: LibraryView,
+        val group: NamedGroupSummary,
+    ) : OpenedLibraryGroup {
+        override val title: String = group.displayName
+        override val parentLabel: String = view.label
+    }
+
+    data class Album(val album: AlbumSummary) : OpenedLibraryGroup {
+        override val title: String = album.displayTitle
+        override val parentLabel: String = LibraryView.ALBUMS.label
+    }
+}
+
+internal fun tracksForOpenedGroup(
+    group: OpenedLibraryGroup,
+    tracks: List<TrackEntity>,
+): List<TrackEntity> = when (group) {
+    is OpenedLibraryGroup.Named -> tracksForMetadataGroup(group.view, group.group.normalizedName, tracks)
+    is OpenedLibraryGroup.Album -> tracksForAlbum(group.album, tracks)
+}
+
+internal fun metadataPlayAllDescription(view: LibraryView, displayName: String): String = when (view) {
+    LibraryView.ARTISTS -> "Play all by $displayName"
+    LibraryView.GENRES -> "Play all in $displayName"
+    else -> "Play all $displayName"
+}
 
 internal fun tracksForMetadataGroup(
     view: LibraryView,
@@ -421,15 +472,3 @@ internal fun tracksForAlbum(
             .thenBy(String.CASE_INSENSITIVE_ORDER) { it.fileName }
             .thenBy { it.fileName },
     )
-
-@Composable
-private fun AlbumList(albums: List<AlbumSummary>) {
-    LazyColumn {
-        items(albums, key = { "${it.normalizedAlbumArtist}:${it.normalizedAlbumTitle}" }) { album ->
-            ListItem(
-                headlineContent = { Text(album.displayTitle) },
-                supportingContent = { Text("${album.displayArtist} · ${album.trackCount} tracks") },
-            )
-        }
-    }
-}

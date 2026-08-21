@@ -14,32 +14,31 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import com.javelinco.localmusicplayer.data.db.NamedGroupSummary
+import com.javelinco.localmusicplayer.data.db.AlbumSummary
 
 @Composable
-fun MetadataListScreen(
-    groups: List<NamedGroupSummary>,
-    onOpen: (NamedGroupSummary) -> Unit,
-    onPlayAll: (NamedGroupSummary) -> Unit,
-    playAllDescription: (NamedGroupSummary) -> String,
+internal fun AlbumListScreen(
+    albums: List<AlbumSummary>,
+    onOpen: (AlbumSummary) -> Unit,
+    onPlayAll: (AlbumSummary) -> Unit,
 ) {
     LazyColumn {
-        items(groups, key = NamedGroupSummary::normalizedName) { group ->
+        items(albums, key = { "${it.normalizedAlbumArtist}:${it.normalizedAlbumTitle}" }) { album ->
             ListItem(
-                headlineContent = { Text(group.displayName) },
-                supportingContent = { Text("${group.trackCount} tracks") },
+                headlineContent = { Text(album.displayTitle) },
+                supportingContent = { Text("${album.displayArtist} · ${album.trackCount} tracks") },
                 trailingContent = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(onClick = { onPlayAll(group) }) {
+                        IconButton(onClick = { onPlayAll(album) }) {
                             Icon(
                                 Icons.Rounded.PlayArrow,
-                                playAllDescription(group),
+                                "Play all from ${album.displayTitle}",
                             )
                         }
                         Icon(Icons.Rounded.ChevronRight, null)
                     }
                 },
-                modifier = Modifier.clickable { onOpen(group) },
+                modifier = Modifier.clickable { onOpen(album) },
             )
         }
     }

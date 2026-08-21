@@ -11,6 +11,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import com.javelinco.localmusicplayer.core.model.SourceId
 import com.javelinco.localmusicplayer.core.model.PlaylistId
+import com.javelinco.localmusicplayer.data.db.AlbumSummary
 import com.javelinco.localmusicplayer.data.db.NamedGroupSummary
 import com.javelinco.localmusicplayer.data.db.PlaylistEntryEntity
 import com.javelinco.localmusicplayer.data.db.TrackEntity
@@ -176,6 +177,7 @@ class LibraryUiTest {
 
     @Test fun artistOpensMatchingTracksAndAddsAllInLibraryOrder() {
         var addition: Pair<String, List<String>>? = null
+        var played: List<String>? = null
         compose.setContent {
             LibraryScreen(
                 state = LibraryScreenState(
@@ -193,6 +195,7 @@ class LibraryUiTest {
                     sources = listOf(source()),
                 ),
                 actions = LibraryActions(
+                    onPlayTracks = { played = it.map(TrackEntity::trackId) },
                     onAddTracksToPlaylist = { playlistId, trackIds -> addition = playlistId to trackIds },
                 ),
             )
@@ -202,13 +205,15 @@ class LibraryUiTest {
         compose.onNodeWithText("First track").assertIsDisplayed()
         compose.onNodeWithText("Second track").assertIsDisplayed()
         compose.onAllNodesWithText("Other track").assertCountEquals(0)
+        compose.onNodeWithText("Play all").performClick()
+        compose.runOnIdle { assertEquals(listOf("one", "two"), played) }
         compose.onNodeWithText("Add all to playlist").performClick()
         compose.onNodeWithText("Road Mix").performClick()
         compose.runOnIdle { assertEquals("mix" to listOf("one", "two"), addition) }
     }
 
-    @Test fun artistAddsDirectlyFromItsLibraryRow() {
-        var addition: Pair<String, List<String>>? = null
+    @Test fun artistPlaysAllDirectlyFromItsLibraryRow() {
+        var played: List<String>? = null
         compose.setContent {
             LibraryScreen(
                 state = LibraryScreenState(
@@ -218,18 +223,16 @@ class LibraryUiTest {
                         track("two", "Second track", artist = "Artist One"),
                     ),
                     artists = listOf(NamedGroupSummary("artist one", "Artist One", 2)),
-                    playlists = listOf(playlist()),
                     sources = listOf(source()),
                 ),
                 actions = LibraryActions(
-                    onAddTracksToPlaylist = { playlistId, trackIds -> addition = playlistId to trackIds },
+                    onPlayTracks = { played = it.map(TrackEntity::trackId) },
                 ),
             )
         }
 
-        compose.onNodeWithContentDescription("Add Artist One to playlist").performClick()
-        compose.onNodeWithText("Road Mix").performClick()
-        compose.runOnIdle { assertEquals("mix" to listOf("one", "two"), addition) }
+        compose.onNodeWithContentDescription("Play all by Artist One").performClick()
+        compose.runOnIdle { assertEquals(listOf("one", "two"), played) }
     }
 
     @Test fun genreOpensMatchingTracksAndAddsAllInLibraryOrder() {
@@ -263,6 +266,79 @@ class LibraryUiTest {
         compose.onNodeWithText("Add all to playlist").performClick()
         compose.onNodeWithText("Road Mix").performClick()
         compose.runOnIdle { assertEquals("mix" to listOf("one", "two"), addition) }
+    }
+
+    @Test fun genrePlaysAllDirectlyFromItsLibraryRow() {
+        var played: List<String>? = null
+        compose.setContent {
+            LibraryScreen(
+                state = LibraryScreenState(
+                    selectedView = LibraryView.GENRES,
+                    tracks = listOf(
+                        track("one", "First track", genre = "Rock"),
+                        track("two", "Second track", genre = "Rock"),
+                    ),
+                    genres = listOf(NamedGroupSummary("rock", "Rock", 2)),
+                    sources = listOf(source()),
+                ),
+                actions = LibraryActions(
+                    onPlayTracks = { played = it.map(TrackEntity::trackId) },
+                ),
+            )
+        }
+
+        compose.onNodeWithContentDescription("Play all in Rock").performClick()
+        compose.runOnIdle { assertEquals(listOf("one", "two"), played) }
+    }
+
+    @Test fun albumPlaysAllDirectlyAndOpensItsTracks() {
+        var played: List<String>? = null
+        compose.setContent {
+            LibraryScreen(
+                state = LibraryScreenState(
+                    selectedView = LibraryView.ALBUMS,
+                    tracks = listOf(
+                        track(
+                            "two",
+                            "Second track",
+                            artist = "Artist One",
+                            albumTitle = "Album One",
+                            albumArtist = "Artist One",
+                            trackNumber = 2,
+                        ),
+                        track(
+                            "other",
+                            "Other track",
+                            artist = "Artist Two",
+                            albumTitle = "Album One",
+                            albumArtist = "Artist Two",
+                        ),
+                        track(
+                            "one",
+                            "First track",
+                            artist = "Artist One",
+                            albumTitle = "Album One",
+                            albumArtist = "Artist One",
+                            trackNumber = 1,
+                        ),
+                    ),
+                    albums = listOf(AlbumSummary("artist one", "album one", "Artist One", "Album One", 2)),
+                    sources = listOf(source()),
+                ),
+                actions = LibraryActions(
+                    onPlayTracks = { played = it.map(TrackEntity::trackId) },
+                ),
+            )
+        }
+
+        compose.onNodeWithContentDescription("Play all from Album One").performClick()
+        compose.runOnIdle { assertEquals(listOf("one", "two"), played) }
+        compose.onNodeWithText("Album One").performClick()
+        compose.onNodeWithText("First track").assertIsDisplayed()
+        compose.onNodeWithText("Second track").assertIsDisplayed()
+        compose.onAllNodesWithText("Other track").assertCountEquals(0)
+        compose.onNodeWithText("Play all").assertIsDisplayed()
+        compose.onNodeWithText("Add all to playlist").assertIsDisplayed()
     }
 
     @Test fun playlistRowsClearlyOpenTheirTracks() {
@@ -300,6 +376,10 @@ class LibraryUiTest {
         title: String,
         artist: String = "Artist $id",
         genre: String = "Genre",
+        albumTitle: String = "Album $id",
+        albumArtist: String = "Artist $id",
+        discNumber: Int = 1,
+        trackNumber: Int = 1,
     ) = TrackEntity(
         trackId = id,
         sourceId = "source",
@@ -307,16 +387,16 @@ class LibraryUiTest {
         fileName = "$title.mp3",
         title = title,
         artist = artist,
-        albumTitle = "Album $id",
-        albumArtist = "Artist $id",
+        albumTitle = albumTitle,
+        albumArtist = albumArtist,
         genre = genre,
         normalizedTitle = title.lowercase(),
         normalizedArtist = artist.lowercase(),
-        normalizedAlbumTitle = "album $id",
-        normalizedAlbumArtist = "artist $id",
+        normalizedAlbumTitle = albumTitle.lowercase(),
+        normalizedAlbumArtist = albumArtist.lowercase(),
         normalizedGenre = genre.lowercase(),
-        discNumber = 1,
-        trackNumber = 1,
+        discNumber = discNumber,
+        trackNumber = trackNumber,
         durationMs = 180_000,
         modifiedAtEpochMs = 1,
         sizeBytes = 1,

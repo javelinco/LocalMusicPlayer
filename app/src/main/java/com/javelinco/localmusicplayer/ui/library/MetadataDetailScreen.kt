@@ -9,10 +9,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.PlaylistAdd
+import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -28,7 +30,7 @@ internal fun MetadataDetailScreen(
     tracks: List<TrackEntity>,
     onBack: () -> Unit,
     onPlayTrack: (TrackEntity) -> Unit,
-    onAddTrack: (TrackEntity) -> Unit,
+    onPlayAll: () -> Unit,
     onAddAll: () -> Unit,
     trackActions: TrackActionCallbacks,
 ) {
@@ -55,9 +57,17 @@ internal fun MetadataDetailScreen(
             }
         }
         Button(
+            onClick = onPlayAll,
+            enabled = tracks.isNotEmpty(),
+            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+        ) {
+            Icon(Icons.Rounded.PlayArrow, null)
+            Text("Play all", modifier = Modifier.padding(start = 8.dp))
+        }
+        OutlinedButton(
             onClick = onAddAll,
             enabled = tracks.isNotEmpty(),
-            modifier = Modifier.padding(vertical = 8.dp),
+            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
         ) {
             Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, null)
             Text("Add all to playlist", modifier = Modifier.padding(start = 8.dp))
