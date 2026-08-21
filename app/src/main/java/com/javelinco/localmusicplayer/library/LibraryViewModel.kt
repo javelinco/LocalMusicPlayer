@@ -147,6 +147,10 @@ class LibraryViewModel(private val container: AppContainer) : ViewModel() {
         scanSession.prioritize(stopPlayback)
     }
 
+    fun dismissScanMessage() {
+        scanSession.dismissMessage()
+    }
+
     fun createPlaylist(name: String) {
         viewModelScope.launch { container.playlistRepository.create(name) }
     }

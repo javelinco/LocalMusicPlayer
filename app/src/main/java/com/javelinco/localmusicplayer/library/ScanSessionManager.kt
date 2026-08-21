@@ -46,6 +46,10 @@ class ScanSessionManager(
         transitionToDedicated(stopPlayback)
     }
 
+    fun dismissMessage() {
+        mutableMessage.value = null
+    }
+
     fun leaveDedicated() {
         if (leaveJob?.isActive == true) return
         leaveRequested = true

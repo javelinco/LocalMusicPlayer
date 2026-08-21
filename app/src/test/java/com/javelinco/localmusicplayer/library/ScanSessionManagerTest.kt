@@ -13,6 +13,7 @@ import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -31,6 +32,18 @@ class ScanSessionManagerTest {
         assertEquals(1, playbackStops)
         assertFalse(manager.dedicated.value)
         assertEquals("Scan complete · 7 indexed · 1 skipped · 0 errors", manager.message.value)
+    }
+
+    @Test
+    fun completionMessageCanBeDismissed() = runTest {
+        val manager = ScanSessionManager(RecordingScanCoordinator(), this)
+        manager.startBackground()
+        advanceUntilIdle()
+
+        assertEquals("Scan complete · 7 indexed · 1 skipped · 0 errors", manager.message.value)
+        manager.dismissMessage()
+
+        assertNull(manager.message.value)
     }
 
     @Test

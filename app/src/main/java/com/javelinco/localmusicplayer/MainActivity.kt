@@ -154,6 +154,7 @@ class MainActivity : ComponentActivity() {
                         onPrioritizeScan = {
                             libraryViewModel.prioritizeScan(playbackViewModel::stopForDedicatedScan)
                         },
+                        onDismissScanMessage = libraryViewModel::dismissScanMessage,
                         onCreatePlaylist = libraryViewModel::createPlaylist,
                         onRenamePlaylist = libraryViewModel::renamePlaylist,
                         onDeletePlaylist = libraryViewModel::deletePlaylist,

@@ -7,7 +7,9 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import com.javelinco.localmusicplayer.core.model.SourceId
 import com.javelinco.localmusicplayer.data.db.TrackEntity
+import com.javelinco.localmusicplayer.data.source.SafTreeSource
 import com.javelinco.localmusicplayer.ui.library.LibraryActions
 import com.javelinco.localmusicplayer.ui.library.LibraryScreen
 import com.javelinco.localmusicplayer.ui.library.LibraryScreenState
@@ -48,6 +50,24 @@ class LibraryUiTest {
         compose.onNodeWithTag("track-card:two").assertIsDisplayed().assertHasClickAction().performClick()
         compose.runOnIdle { assertEquals("two", playedTrackId) }
     }
+
+    @Test fun scanResultCanBeDismissed() {
+        var dismissed = false
+        compose.setContent {
+            LibraryScreen(
+                state = LibraryScreenState(
+                    scanMessage = "Scan complete",
+                    sources = listOf(source()),
+                ),
+                actions = LibraryActions(onDismissScanMessage = { dismissed = true }),
+            )
+        }
+
+        compose.onNodeWithContentDescription("Dismiss scan result").performClick()
+        compose.runOnIdle { assertEquals(true, dismissed) }
+    }
+
+    private fun source() = SafTreeSource(SourceId("source"), "content://music", "Music")
 
     private fun track(id: String, title: String) = TrackEntity(
         trackId = id,

@@ -34,6 +34,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.platform.testTag
@@ -78,6 +79,7 @@ data class LibraryActions(
     val onBackgroundScan: () -> Unit = {},
     val onDedicatedScan: () -> Unit = {},
     val onPrioritizeScan: () -> Unit = {},
+    val onDismissScanMessage: () -> Unit = {},
     val onCreatePlaylist: (String) -> Unit = {},
     val onRenamePlaylist: (String, String) -> Unit = { _, _ -> },
     val onDeletePlaylist: (String) -> Unit = {},
@@ -143,8 +145,22 @@ fun LibraryScreen(state: LibraryScreenState, actions: LibraryActions) {
                 }
             }
         }
-        state.scanMessage?.let {
-            Text(it, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(vertical = 8.dp))
+        state.scanMessage?.let { message ->
+            Card(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(start = 14.dp, end = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        message,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.weight(1f),
+                    )
+                    IconButton(onClick = actions.onDismissScanMessage) {
+                        Icon(Icons.Rounded.Close, "Dismiss scan result")
+                    }
+                }
+            }
         }
         if (state.sources.isEmpty() || toolsOpen) {
             SourcesScreen(
