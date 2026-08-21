@@ -17,6 +17,9 @@ interface RecentPlayDao {
     @Upsert
     suspend fun upsert(row: RecentPlayEntity)
 
+    @Query("DELETE FROM recent_plays WHERE kind = :kind AND itemId = :itemId")
+    suspend fun remove(kind: String, itemId: String)
+
     @Query(
         """
         DELETE FROM recent_plays

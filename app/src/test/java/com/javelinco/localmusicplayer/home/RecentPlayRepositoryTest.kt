@@ -4,6 +4,7 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.javelinco.localmusicplayer.data.db.LocalMusicDatabase
 import com.javelinco.localmusicplayer.data.db.PlaylistEntity
+import com.javelinco.localmusicplayer.data.db.RecentPlaylistRow
 import com.javelinco.localmusicplayer.data.db.ScanBatch
 import com.javelinco.localmusicplayer.data.db.ScanCheckpointEntity
 import com.javelinco.localmusicplayer.data.db.TrackEntity
@@ -79,6 +80,40 @@ class RecentPlayRepositoryTest {
             repository.observeRecentPlaylists().first().map { it.playlistId },
         )
         assertEquals(emptyList<TrackEntity>(), repository.observeRecentTracks().first())
+    }
+
+    @Test
+    fun removingTrackHistoryKeepsTrackAndPlaylistHistory() = runTest {
+        database.libraryDao().applyScanBatch(ScanBatch(listOf(track("song")), checkpoint()))
+        database.userDataDao().upsertPlaylist(PlaylistEntity("mix", "Mix", 1, 1))
+        repository.recordTrack("song", 10)
+        repository.recordPlaylist("mix", 20)
+
+        repository.removeTrack("song")
+
+        assertEquals(emptyList<TrackEntity>(), repository.observeRecentTracks().first())
+        assertEquals(listOf("mix"), repository.observeRecentPlaylists().first().map { it.playlistId })
+        assertEquals(
+            listOf("song"),
+            database.libraryDao().observeAvailableTracks().first().map { it.trackId },
+        )
+    }
+
+    @Test
+    fun removingPlaylistHistoryKeepsPlaylistAndTrackHistory() = runTest {
+        database.libraryDao().applyScanBatch(ScanBatch(listOf(track("song")), checkpoint()))
+        database.userDataDao().upsertPlaylist(PlaylistEntity("mix", "Mix", 1, 1))
+        repository.recordTrack("song", 10)
+        repository.recordPlaylist("mix", 20)
+
+        repository.removePlaylist("mix")
+
+        assertEquals(listOf("song"), repository.observeRecentTracks().first().map { it.trackId })
+        assertEquals(emptyList<RecentPlaylistRow>(), repository.observeRecentPlaylists().first())
+        assertEquals(
+            listOf("mix"),
+            database.userDataDao().observePlaylists().first().map { it.playlistId },
+        )
     }
 
     private fun checkpoint() = ScanCheckpointEntity("source", "cursor", 6, 10)

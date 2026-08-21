@@ -26,6 +26,14 @@ class RecentPlayRepository(
         record(RecentPlayKind.PLAYLIST, playlistId, playedAtEpochMs)
     }
 
+    suspend fun removeTrack(trackId: String) {
+        dao.remove(RecentPlayKind.TRACK.name, trackId)
+    }
+
+    suspend fun removePlaylist(playlistId: String) {
+        dao.remove(RecentPlayKind.PLAYLIST.name, playlistId)
+    }
+
     private suspend fun record(kind: RecentPlayKind, itemId: String, playedAtEpochMs: Long) {
         dao.record(RecentPlayEntity(kind.name, itemId, playedAtEpochMs), HISTORY_LIMIT)
     }

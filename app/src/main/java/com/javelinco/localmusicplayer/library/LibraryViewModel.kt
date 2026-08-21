@@ -165,6 +165,14 @@ class LibraryViewModel(private val container: AppContainer) : ViewModel() {
         viewModelScope.launch { container.playlistRepository.delete(PlaylistId(id)) }
     }
 
+    fun removeRecentTrack(trackId: String) {
+        viewModelScope.launch { container.recentPlayRepository.removeTrack(trackId) }
+    }
+
+    fun removeRecentPlaylist(playlistId: String) {
+        viewModelScope.launch { container.recentPlayRepository.removePlaylist(playlistId) }
+    }
+
     fun addTracksToPlaylist(playlistId: String, trackIds: List<String>) {
         viewModelScope.launch {
             container.playlistRepository.addTracks(PlaylistId(playlistId), trackIds.map(::TrackId))
