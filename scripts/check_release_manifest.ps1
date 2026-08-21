@@ -1,6 +1,4 @@
-param(
-    [string]$ManifestPath = "app/build/intermediates/merged_manifests/debug/processDebugManifest/AndroidManifest.xml"
-)
+param([string]$ManifestPath)
 
 $ErrorActionPreference = "Stop"
 
@@ -11,7 +9,20 @@ $approvedPermissions = @(
     "android.permission.WAKE_LOCK"
 )
 
-$resolvedManifest = Join-Path (Get-Location) $ManifestPath
+$workspaceRoot = (Get-Location).Path
+if ([string]::IsNullOrWhiteSpace($ManifestPath)) {
+    $workspaceName = Split-Path -Leaf $workspaceRoot
+    $projectManifest = Join-Path $workspaceRoot "app/build/intermediates/merged_manifests/debug/processDebugManifest/AndroidManifest.xml"
+    $externalManifest = Join-Path $env:TEMP "LocalMusicPlayer-build/$workspaceName/app/intermediates/merged_manifests/debug/processDebugManifest/AndroidManifest.xml"
+    $resolvedManifest = if (Test-Path -LiteralPath $externalManifest -PathType Leaf) {
+        $externalManifest
+    } else {
+        $projectManifest
+    }
+} else {
+    $resolvedManifest = Join-Path $workspaceRoot $ManifestPath
+}
+
 if (-not (Test-Path -LiteralPath $resolvedManifest -PathType Leaf)) {
     throw "Merged manifest not found: $resolvedManifest"
 }
