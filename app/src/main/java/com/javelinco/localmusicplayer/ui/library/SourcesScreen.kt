@@ -22,7 +22,6 @@ import com.javelinco.localmusicplayer.data.source.MusicSource
 fun SourcesScreen(
     sources: List<MusicSource>,
     onChooseFolder: () -> Unit,
-    onChooseFiles: () -> Unit,
     onFindAll: () -> Unit,
     onBackgroundScan: () -> Unit,
     onDedicatedScan: () -> Unit,
@@ -30,14 +29,18 @@ fun SourcesScreen(
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         if (sources.isEmpty()) {
             Text("Where is your music?", style = MaterialTheme.typography.headlineSmall)
-            Text("Choose only what Music, Please! may see. Folder and file choices need no broad audio permission.")
+            Text("Choose only the folders Music, Please! may see. No broad audio permission is needed.")
         } else {
             Text("Music sources", style = MaterialTheme.typography.titleLarge)
         }
-        Button(onClick = onChooseFolder, modifier = Modifier.fillMaxWidth()) { Text("Choose a folder") }
-        OutlinedButton(onClick = onChooseFiles, modifier = Modifier.fillMaxWidth()) {
-            Text("Choose specific MP3 files")
+        Button(onClick = onChooseFolder, modifier = Modifier.fillMaxWidth()) {
+            Text(if (sources.isEmpty()) "Choose a music folder" else "Add another folder")
         }
+        Text(
+            "Repeat this for every folder you want in your Library.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
         OutlinedButton(onClick = onFindAll, modifier = Modifier.fillMaxWidth()) {
             Text("Find all device music")
         }

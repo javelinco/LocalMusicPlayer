@@ -41,7 +41,28 @@ class LibraryUiTest {
         compose.onNodeWithContentDescription("Search Tracks").assertIsDisplayed()
         compose.onNodeWithContentDescription("Library tools").assertIsDisplayed()
         compose.onNodeWithText("Where is your music?").assertIsDisplayed()
-        compose.onNodeWithText("Choose a folder").assertIsDisplayed()
+        compose.onNodeWithText("Choose a music folder").assertIsDisplayed()
+        compose.onAllNodesWithText("Choose specific MP3 files").assertCountEquals(0)
+    }
+
+    @Test fun existingFoldersRemainVisibleAndAnotherCanBeAdded() {
+        compose.setContent {
+            LibraryScreen(
+                state = LibraryScreenState(
+                    sources = listOf(
+                        SafTreeSource(SourceId("music"), "content://tree/music", "Music"),
+                        SafTreeSource(SourceId("concerts"), "content://tree/concerts", "Concerts"),
+                    ),
+                ),
+                actions = LibraryActions(),
+            )
+        }
+
+        compose.onNodeWithContentDescription("Library tools").performClick()
+        compose.onNodeWithText("Add another folder").assertIsDisplayed()
+        compose.onNodeWithText("Music").assertIsDisplayed()
+        compose.onNodeWithText("Concerts").assertIsDisplayed()
+        compose.onAllNodesWithText("Choose specific MP3 files").assertCountEquals(0)
     }
 
     @Test fun tracksRenderAsSeparateClickableCards() {

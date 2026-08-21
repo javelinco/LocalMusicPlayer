@@ -75,7 +75,6 @@ data class LibraryActions(
     val onPlayTrack: (TrackEntity) -> Unit = {},
     val onPlayPlaylist: (String) -> Unit = {},
     val onChooseFolder: () -> Unit = {},
-    val onChooseFiles: () -> Unit = {},
     val onFindAll: () -> Unit = {},
     val onBackgroundScan: () -> Unit = {},
     val onDedicatedScan: () -> Unit = {},
@@ -180,7 +179,6 @@ fun LibraryScreen(state: LibraryScreenState, actions: LibraryActions) {
             SourcesScreen(
                 sources = state.sources,
                 onChooseFolder = actions.onChooseFolder,
-                onChooseFiles = actions.onChooseFiles,
                 onFindAll = actions.onFindAll,
                 onBackgroundScan = actions.onBackgroundScan,
                 onDedicatedScan = actions.onDedicatedScan,
