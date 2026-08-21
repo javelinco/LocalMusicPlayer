@@ -69,7 +69,6 @@ These boundaries keep UI presentation, playback mutation, catalog policy, and ba
 ## Error and Edge Cases
 
 - Queue actions wait for a ready Media3 controller; a rejected action reports that playback is not ready instead of silently doing nothing.
-- Duplicate explicit queue additions are allowed because the user may intentionally want to hear a track again; each occurrence has its own queue position.
 - Removing an already ignored track is idempotent.
 - Restoring an ignore rule whose catalog row is missing removes the rule successfully; the track returns when a later scan finds it.
 - Backup restore validates ignored-track data before replacing current user data and retains the existing safety-backup behavior.
@@ -79,7 +78,7 @@ These boundaries keep UI presentation, playback mutation, catalog policy, and ba
 
 - Compose tests verify card-body play, overflow discoverability, each menu callback, playlist-picker routing, information display, and the extra removal confirmation.
 - Navigation tests verify `Go to artist` from Library, recent tracks, playlists, and queue.
-- Playback tests verify Play Next placement, normal Add to Queue append, uniform shuffled insertion, empty-session behavior, duplicates, and queue-screen ordering.
+- Playback tests verify Play Next placement, normal Add to Queue append, uniform shuffled insertion, empty-session behavior, and queue-screen ordering.
 - Room tests verify transactional ignore/restore, search and group disappearance, and playlist-reference preservation.
 - Scanner tests verify ignored tracks remain ignored across full and incremental rescans.
 - Backup tests verify ignored-rule round trips, older backups default to no ignored rules, and cross-phone portable relinking.
