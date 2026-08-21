@@ -81,6 +81,32 @@ interface UserDataDao {
     @Query("SELECT * FROM settings_metadata ORDER BY key")
     suspend fun settings(): List<SettingsMetadataEntity>
 
+    @Query("DELETE FROM playlist_entries")
+    suspend fun clearPlaylistEntries()
+
+    @Query("DELETE FROM playlists")
+    suspend fun clearPlaylists()
+
+    @Query("DELETE FROM favorites")
+    suspend fun clearFavorites()
+
+    @Query("DELETE FROM settings_metadata")
+    suspend fun clearSettings()
+
+    @Transaction
+    suspend fun replaceUserData(snapshot: UserDataSnapshot) {
+        clearPlaylistEntries()
+        clearPlaylists()
+        clearFavorites()
+        clearQueueSession()
+        clearSettings()
+        snapshot.playlists.forEach { upsertPlaylist(it) }
+        if (snapshot.entries.isNotEmpty()) upsertPlaylistEntries(snapshot.entries)
+        snapshot.favorites.forEach { upsertFavorite(it) }
+        snapshot.queueSessions.forEach { saveQueueSession(it) }
+        snapshot.settings.forEach { upsertSetting(it) }
+    }
+
     @Transaction
     suspend fun snapshot() = UserDataSnapshot(
         playlists = playlists(),

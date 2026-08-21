@@ -23,6 +23,10 @@ class BackupManager(
     private val nowEpochMs: () -> Long = System::currentTimeMillis,
     private val restore: suspend (BackupBundle) -> Unit = {},
 ) {
+    suspend fun listBackups(): List<String> = storage.listNames()
+        .filter { it.startsWith("LocalMusicPlayer-") && it.endsWith(".zip") }
+        .sortedDescending()
+
     suspend fun createAutomaticIfDue(): Boolean {
         val now = nowEpochMs()
         val day = DAY_FORMAT.format(Instant.ofEpochMilli(now))
@@ -134,4 +138,3 @@ class SafBackupStorage(
         const val ZIP_MIME = "application/zip"
     }
 }
-

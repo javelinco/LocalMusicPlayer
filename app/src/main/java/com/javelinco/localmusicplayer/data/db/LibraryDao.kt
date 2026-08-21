@@ -19,6 +19,9 @@ interface LibraryDao {
     @Query("SELECT * FROM sources ORDER BY label COLLATE NOCASE, sourceId")
     fun observeSources(): Flow<List<SourceEntity>>
 
+    @Query("SELECT * FROM sources ORDER BY label COLLATE NOCASE, sourceId")
+    suspend fun sources(): List<SourceEntity>
+
     @Query("DELETE FROM sources WHERE sourceId = :sourceId")
     suspend fun deleteSource(sourceId: String)
 
@@ -66,6 +69,18 @@ interface LibraryDao {
         """,
     )
     suspend fun searchTracks(query: String, limit: Int = 200): List<TrackEntity>
+
+    @Query(
+        """
+        SELECT * FROM tracks WHERE available = 1
+        ORDER BY normalizedArtist, normalizedAlbumTitle,
+            COALESCE(discNumber, 1), COALESCE(trackNumber, 0), fileName COLLATE NOCASE
+        """,
+    )
+    fun observeAvailableTracks(): Flow<List<TrackEntity>>
+
+    @Query("SELECT * FROM tracks ORDER BY trackId")
+    suspend fun allTracks(): List<TrackEntity>
 
     @Query(
         """
