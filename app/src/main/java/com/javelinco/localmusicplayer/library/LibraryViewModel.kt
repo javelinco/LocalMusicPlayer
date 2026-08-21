@@ -5,6 +5,9 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.javelinco.localmusicplayer.AppContainer
 import com.javelinco.localmusicplayer.core.model.TrackId
+import com.javelinco.localmusicplayer.core.model.PlaylistEntryId
+import com.javelinco.localmusicplayer.core.model.PlaylistId
+import com.javelinco.localmusicplayer.data.db.PlaylistEntryEntity
 import com.javelinco.localmusicplayer.data.db.TrackEntity
 import com.javelinco.localmusicplayer.data.scan.ScanExecutionMode
 import com.javelinco.localmusicplayer.data.scan.ScanProgress
@@ -29,6 +32,9 @@ class LibraryViewModel(private val container: AppContainer) : ViewModel() {
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
     val playlists: StateFlow<List<PlaylistSummary>> = container.playlistRepository.observePlaylists()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    val playlistEntries: StateFlow<List<PlaylistEntryEntity>> =
+        container.database.userDataDao().observeAllPlaylistEntries()
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
     val favorites: StateFlow<Set<TrackId>> = container.playlistRepository.observeFavorites()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
     val settings: StateFlow<SettingsState> = container.settings.state
@@ -83,6 +89,30 @@ class LibraryViewModel(private val container: AppContainer) : ViewModel() {
 
     fun createPlaylist(name: String) {
         viewModelScope.launch { container.playlistRepository.create(name) }
+    }
+
+    fun renamePlaylist(id: String, name: String) {
+        viewModelScope.launch { container.playlistRepository.rename(PlaylistId(id), name) }
+    }
+
+    fun deletePlaylist(id: String) {
+        viewModelScope.launch { container.playlistRepository.delete(PlaylistId(id)) }
+    }
+
+    fun addTrackToPlaylist(playlistId: String, trackId: String) {
+        viewModelScope.launch {
+            container.playlistRepository.addTracks(PlaylistId(playlistId), listOf(TrackId(trackId)))
+        }
+    }
+
+    fun removePlaylistEntry(playlistId: String, entryId: String) {
+        viewModelScope.launch {
+            container.playlistRepository.removeEntry(PlaylistId(playlistId), PlaylistEntryId(entryId))
+        }
+    }
+
+    fun movePlaylistEntry(playlistId: String, from: Int, to: Int) {
+        viewModelScope.launch { container.playlistRepository.moveEntry(PlaylistId(playlistId), from, to) }
     }
 
     fun setTheme(theme: ThemePreference) {

@@ -88,6 +88,7 @@ class MainActivity : ComponentActivity() {
             val searchResults by libraryViewModel.searchResults.collectAsState()
             val sources by libraryViewModel.sources.collectAsState()
             val playlists by libraryViewModel.playlists.collectAsState()
+            val playlistEntries by libraryViewModel.playlistEntries.collectAsState()
             val favorites by libraryViewModel.favorites.collectAsState()
             val settings by libraryViewModel.settings.collectAsState()
             val scanProgress by libraryViewModel.scanProgress.collectAsState()
@@ -101,6 +102,7 @@ class MainActivity : ComponentActivity() {
                     searchResults = searchResults,
                     sources = sources,
                     playlists = playlists,
+                    playlistEntries = playlistEntries,
                     favoriteIds = favorites.mapTo(linkedSetOf()) { it.value },
                     scanProgress = scanProgress,
                     dedicated = dedicated,
@@ -124,6 +126,11 @@ class MainActivity : ComponentActivity() {
                     onShuffle = playbackViewModel::toggleShuffle,
                     onRepeat = playbackViewModel::cycleRepeat,
                     onCreatePlaylist = libraryViewModel::createPlaylist,
+                    onRenamePlaylist = libraryViewModel::renamePlaylist,
+                    onDeletePlaylist = libraryViewModel::deletePlaylist,
+                    onAddToPlaylist = libraryViewModel::addTrackToPlaylist,
+                    onRemovePlaylistEntry = libraryViewModel::removePlaylistEntry,
+                    onMovePlaylistEntry = libraryViewModel::movePlaylistEntry,
                     onChooseBackupFolder = { backupFolderPicker.launch(null) },
                     onManualBackup = libraryViewModel::createManualBackup,
                     onRefreshBackups = libraryViewModel::refreshBackups,

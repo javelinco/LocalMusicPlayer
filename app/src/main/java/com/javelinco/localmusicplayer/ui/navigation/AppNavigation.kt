@@ -16,6 +16,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.javelinco.localmusicplayer.data.db.TrackEntity
+import com.javelinco.localmusicplayer.data.db.PlaylistEntryEntity
 import com.javelinco.localmusicplayer.data.scan.ScanProgress
 import com.javelinco.localmusicplayer.data.settings.SettingsState
 import com.javelinco.localmusicplayer.data.settings.ThemePreference
@@ -45,6 +46,7 @@ fun AppNavigation(
     searchResults: List<TrackEntity>,
     sources: List<MusicSource>,
     playlists: List<PlaylistSummary>,
+    playlistEntries: List<PlaylistEntryEntity>,
     favoriteIds: Set<String>,
     scanProgress: ScanProgress?,
     dedicated: Boolean,
@@ -68,6 +70,11 @@ fun AppNavigation(
     onShuffle: () -> Unit,
     onRepeat: () -> Unit,
     onCreatePlaylist: (String) -> Unit,
+    onRenamePlaylist: (String, String) -> Unit,
+    onDeletePlaylist: (String) -> Unit,
+    onAddToPlaylist: (String, String) -> Unit,
+    onRemovePlaylistEntry: (String, String) -> Unit,
+    onMovePlaylistEntry: (String, Int, Int) -> Unit,
     onChooseBackupFolder: () -> Unit,
     onManualBackup: () -> Unit,
     onRefreshBackups: () -> Unit,
@@ -105,7 +112,17 @@ fun AppNavigation(
             when (destination) {
                 Destination.LIBRARY -> LibraryScreen(tracks, favoriteIds, onPlay, onFavorite)
                 Destination.SEARCH -> SearchScreen(searchResults, favoriteIds, onSearch, onPlay, onFavorite)
-                Destination.PLAYLISTS -> PlaylistScreen(playlists, onCreatePlaylist)
+                Destination.PLAYLISTS -> PlaylistScreen(
+                    playlists,
+                    playlistEntries,
+                    tracks,
+                    onCreatePlaylist,
+                    onRenamePlaylist,
+                    onDeletePlaylist,
+                    onAddToPlaylist,
+                    onRemovePlaylistEntry,
+                    onMovePlaylistEntry,
+                )
                 Destination.SOURCES -> SourcesScreen(sources, scanProgress, onChooseFolder, onChooseFiles, onFindAll, onBackgroundScan, onDedicatedScan)
                 Destination.MORE -> Column {
                     Button(onClick = { destination = Destination.NOW_PLAYING }) { Text("Now Playing") }

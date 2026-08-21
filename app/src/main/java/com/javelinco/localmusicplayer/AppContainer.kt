@@ -32,7 +32,10 @@ class AppContainer(context: Context) {
     ).build()
     val sourceRegistry = RoomSourceRegistry(database.libraryDao())
     val libraryRepository = LibraryRepository(database.libraryDao())
-    val playlistRepository = RoomPlaylistRepository(database.userDataDao())
+    val playlistRepository = RoomPlaylistRepository(
+        dao = database.userDataDao(),
+        libraryDao = database.libraryDao(),
+    )
     val queueEngine = QueueEngine()
     val settings = AppSettings(appContext)
     val backupData = RoomBackupDataSource(database.libraryDao(), database.userDataDao())

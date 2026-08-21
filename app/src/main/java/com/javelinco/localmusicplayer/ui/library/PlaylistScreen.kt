@@ -1,8 +1,11 @@
 package com.javelinco.localmusicplayer.ui.library
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.Button
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.OutlinedTextField
@@ -12,20 +15,73 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import com.javelinco.localmusicplayer.data.db.PlaylistEntryEntity
+import com.javelinco.localmusicplayer.data.db.TrackEntity
 import com.javelinco.localmusicplayer.playlists.PlaylistSummary
 
 @Composable
-fun PlaylistScreen(playlists: List<PlaylistSummary>, onCreate: (String) -> Unit) {
+@Suppress("LongParameterList")
+fun PlaylistScreen(
+    playlists: List<PlaylistSummary>,
+    entries: List<PlaylistEntryEntity>,
+    tracks: List<TrackEntity>,
+    onCreate: (String) -> Unit,
+    onRename: (String, String) -> Unit,
+    onDelete: (String) -> Unit,
+    onAdd: (String, String) -> Unit,
+    onRemove: (String, String) -> Unit,
+    onMove: (String, Int, Int) -> Unit,
+) {
     var name by remember { mutableStateOf("") }
+    var selectedId by remember { mutableStateOf<String?>(null) }
+    val selected = playlists.find { it.id.value == selectedId }
     Column {
-        OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Playlist name") })
-        Button(onClick = { onCreate(name); name = "" }) { Text("Create playlist") }
-        LazyColumn {
-            items(playlists, key = { it.id.value }) { playlist ->
-                ListItem(
-                    headlineContent = { Text(playlist.name) },
-                    supportingContent = { Text("${playlist.trackCount} tracks") },
-                )
+        if (selected == null) {
+            OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Playlist name") })
+            Button(onClick = { onCreate(name); name = "" }) { Text("Create playlist") }
+            LazyColumn {
+                items(playlists, key = { it.id.value }) { playlist ->
+                    ListItem(
+                        headlineContent = { Text(playlist.name) },
+                        supportingContent = { Text("${playlist.trackCount} tracks") },
+                        modifier = Modifier.clickable { selectedId = playlist.id.value; name = playlist.name },
+                    )
+                }
+            }
+        } else {
+            Button(onClick = { selectedId = null }) { Text("Back to playlists") }
+            OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Playlist name") })
+            Row {
+                Button(onClick = { onRename(selected.id.value, name) }) { Text("Rename") }
+                Button(onClick = { onDelete(selected.id.value); selectedId = null }) { Text("Delete") }
+            }
+            Text("Playlist order")
+            val selectedEntries = entries.filter { it.playlistId == selected.id.value }.sortedBy { it.position }
+            LazyColumn(modifier = Modifier.weight(1f)) {
+                itemsIndexed(selectedEntries, key = { _, it -> it.entryId }) { index, entry ->
+                    val track = tracks.find { it.trackId == entry.trackId }
+                    ListItem(
+                        headlineContent = { Text(track?.title ?: entry.titleSnapshot.ifBlank { "Unavailable track" }) },
+                        supportingContent = { Text(if (track == null) "Unavailable — kept in playlist" else track.artist ?: track.fileName) },
+                        trailingContent = {
+                            Row {
+                                Button(onClick = { onMove(selected.id.value, index, index - 1) }, enabled = index > 0) { Text("↑") }
+                                Button(onClick = { onMove(selected.id.value, index, index + 1) }, enabled = index < selectedEntries.lastIndex) { Text("↓") }
+                                Button(onClick = { onRemove(selected.id.value, entry.entryId) }) { Text("Remove") }
+                            }
+                        },
+                    )
+                }
+            }
+            Text("Add a track")
+            LazyColumn(modifier = Modifier.weight(1f)) {
+                items(tracks, key = TrackEntity::trackId) { track ->
+                    ListItem(
+                        headlineContent = { Text(track.title ?: track.fileName) },
+                        trailingContent = { Button(onClick = { onAdd(selected.id.value, track.trackId) }) { Text("Add") } },
+                    )
+                }
             }
         }
     }

@@ -4,6 +4,7 @@ import com.javelinco.localmusicplayer.core.model.PlaylistEntryId
 import com.javelinco.localmusicplayer.core.model.PlaylistId
 import com.javelinco.localmusicplayer.core.model.TrackId
 import com.javelinco.localmusicplayer.data.db.FavoriteEntity
+import com.javelinco.localmusicplayer.data.db.LibraryDao
 import com.javelinco.localmusicplayer.data.db.PlaylistEntity
 import com.javelinco.localmusicplayer.data.db.PlaylistEntryEntity
 import com.javelinco.localmusicplayer.data.db.UserDataDao
@@ -16,6 +17,7 @@ class RoomPlaylistRepository(
     private val dao: UserDataDao,
     private val clock: () -> Long = System::currentTimeMillis,
     private val idFactory: () -> String = { UUID.randomUUID().toString() },
+    private val libraryDao: LibraryDao? = null,
 ) : PlaylistRepository {
     override fun observePlaylists(): Flow<List<PlaylistSummary>> =
         combine(dao.observePlaylists(), dao.observeAllPlaylistEntries()) { playlists, entries ->
@@ -47,13 +49,14 @@ class RoomPlaylistRepository(
         val start = dao.playlistEntries(id.value).size
         dao.upsertPlaylistEntries(
             tracks.mapIndexed { offset, track ->
+                val catalogTrack = libraryDao?.track(track.value)
                 PlaylistEntryEntity(
                     entryId = idFactory(),
                     playlistId = id.value,
                     position = start + offset,
                     trackId = track.value,
-                    titleSnapshot = track.value,
-                    contentUriSnapshot = "",
+                    titleSnapshot = catalogTrack?.title ?: catalogTrack?.fileName ?: track.value,
+                    contentUriSnapshot = catalogTrack?.contentUri.orEmpty(),
                     addedAtEpochMs = clock(),
                 )
             },
@@ -72,7 +75,15 @@ class RoomPlaylistRepository(
 
     override suspend fun setFavorite(track: TrackId, favorite: Boolean) {
         if (favorite) {
-            dao.upsertFavorite(FavoriteEntity(track.value, track.value, "", clock()))
+            val catalogTrack = libraryDao?.track(track.value)
+            dao.upsertFavorite(
+                FavoriteEntity(
+                    track.value,
+                    catalogTrack?.title ?: catalogTrack?.fileName ?: track.value,
+                    catalogTrack?.contentUri.orEmpty(),
+                    clock(),
+                ),
+            )
         } else {
             dao.deleteFavorite(track.value)
         }
