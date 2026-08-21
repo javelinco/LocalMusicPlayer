@@ -46,6 +46,7 @@ class LibraryUiTest {
     }
 
     @Test fun existingFoldersRemainVisibleAndAnotherCanBeAdded() {
+        var folderRequested = false
         compose.setContent {
             LibraryScreen(
                 state = LibraryScreenState(
@@ -54,15 +55,16 @@ class LibraryUiTest {
                         SafTreeSource(SourceId("concerts"), "content://tree/concerts", "Concerts"),
                     ),
                 ),
-                actions = LibraryActions(),
+                actions = LibraryActions(onChooseFolder = { folderRequested = true }),
             )
         }
 
         compose.onNodeWithContentDescription("Library tools").performClick()
-        compose.onNodeWithText("Add another folder").assertIsDisplayed()
+        compose.onNodeWithText("Add another folder").assertIsDisplayed().performClick()
         compose.onNodeWithText("Music").assertIsDisplayed()
         compose.onNodeWithText("Concerts").assertIsDisplayed()
         compose.onAllNodesWithText("Choose specific MP3 files").assertCountEquals(0)
+        compose.runOnIdle { assertEquals(true, folderRequested) }
     }
 
     @Test fun tracksRenderAsSeparateClickableCards() {
