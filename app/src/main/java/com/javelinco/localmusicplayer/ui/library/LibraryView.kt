@@ -7,3 +7,6 @@ enum class LibraryView(val label: String) {
     GENRES("Genres"),
     PLAYLISTS("Playlists"),
 }
+
+val LibraryView.selectorLabel: String
+    get() = "View: $label"

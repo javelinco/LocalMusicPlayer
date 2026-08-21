@@ -160,7 +160,7 @@ fun LibraryScreen(state: LibraryScreenState, actions: LibraryActions) {
                 onClick = { menuExpanded = true },
                 modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable),
             ) {
-                Text(state.selectedView.label)
+                Text(state.selectedView.selectorLabel)
                 Icon(Icons.Rounded.ArrowDropDown, null)
             }
             ExposedDropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
