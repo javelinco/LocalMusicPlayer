@@ -17,6 +17,6 @@ Music, Please! deliberately does **not** request:
 - `MANAGE_EXTERNAL_STORAGE` or legacy external-storage access
 - Bluetooth/nearby, location, contacts, microphone, camera, or notification permissions
 
-Galaxy Buds controls arrive through Android's MediaSession; the application does not need Bluetooth permission. User-selected music folders and files are retained as read-only Storage Access Framework grants. The separately selected backup folder is retained read/write because backup creation and rotation require it.
+Galaxy Buds controls arrive through Android's MediaSession; the application does not need Bluetooth permission. Each user-selected music folder is retained as a read-only Storage Access Framework grant, and the folder picker can be repeated to add as many folders as needed. Legacy individual-file grants restored from an older backup remain readable, but the current app does not offer new individual-file selection. The separately selected backup folder is retained read/write because backup creation and rotation require it.
 
 Run [`check_release_manifest.ps1`](../scripts/check_release_manifest.ps1) against the merged release manifest to enforce the permission allowlist. Run [`check_packaged_dependencies.ps1`](../scripts/check_packaged_dependencies.ps1) to scan the APK for common network, ads, and telemetry namespaces.

@@ -181,7 +181,7 @@ class MainActivity : ComponentActivity() {
         AlertDialog(
             onDismissRequest = { showDevicePermissionExplanation = false },
             title = { Text("Allow device-wide music access?") },
-            text = { Text("Android will grant audio-only access. Selected folders and files continue to work without it. Music, Please! has no internet or all-files permission.") },
+            text = { Text("Android will grant audio-only access. Selected folders continue to work without it. Music, Please! has no internet or all-files permission.") },
             confirmButton = {
                 TextButton(onClick = {
                     showDevicePermissionExplanation = false
