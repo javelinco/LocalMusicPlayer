@@ -37,6 +37,12 @@ interface UserDataDao {
     @Query("SELECT * FROM queue_session ORDER BY singletonId")
     suspend fun queueSessions(): List<QueueSessionEntity>
 
+    @Query("SELECT * FROM queue_session WHERE singletonId = 1")
+    suspend fun queueSession(): QueueSessionEntity?
+
+    @Query("DELETE FROM queue_session")
+    suspend fun clearQueueSession()
+
     @Query("SELECT * FROM settings_metadata ORDER BY key")
     suspend fun settings(): List<SettingsMetadataEntity>
 
