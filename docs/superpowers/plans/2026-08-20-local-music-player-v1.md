@@ -81,7 +81,8 @@ param([string]$ManifestPath = "app/build/intermediates/merged_manifests/debug/pr
 $approved = @(
   "android.permission.READ_MEDIA_AUDIO",
   "android.permission.FOREGROUND_SERVICE",
-  "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
+  "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
+  "android.permission.WAKE_LOCK"
 )
 [xml]$manifest = Get-Content -Raw -LiteralPath $ManifestPath
 $actual = @($manifest.manifest.'uses-permission' | ForEach-Object { $_.'android:name' })
@@ -99,12 +100,13 @@ Expected: FAIL because the merged manifest does not exist.
 
 - [ ] **Step 3: Add the minimal project and manifest**
 
-Pin the versions from the header in `libs.versions.toml`. Configure `namespace`, `applicationId`, `minSdk = 33`, `compileSdk = 37`, `targetSdk = 37`, Compose, KSP, Room schema export, unit resources, and the AndroidX test runner. The main manifest declares only:
+Pin the versions from the header in `libs.versions.toml`. Configure `namespace`, `applicationId`, `minSdk = 33`, `compileSdk = 37`, `targetSdk = 37`, Compose, KSP, Room schema export, unit resources, and the AndroidX test runner. The main manifest declares only the following system permissions. `WAKE_LOCK` keeps local playback reliable while the display is off and exposes no user data. A manifest-merger removal rule rejects Media3's unused `ACCESS_NETWORK_STATE` declaration. AndroidX may also generate an app-private signature permission to protect non-exported dynamic receivers; the gate permits only locally declared signature permissions in addition to this list.
 
 ```xml
 <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
 <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
 <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+<uses-permission android:name="android.permission.WAKE_LOCK" />
 ```
 
 Set `android:allowBackup="false"`; V1 uses its own portable backup rather than OS cloud backup.
