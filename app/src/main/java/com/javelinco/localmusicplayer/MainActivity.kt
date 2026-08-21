@@ -133,6 +133,11 @@ class MainActivity : ComponentActivity() {
                         onCloseSearch = libraryViewModel::closeLibrarySearch,
                         onSearch = libraryViewModel::searchLibrary,
                         onPlayTrack = { playbackViewModel.play(it, tracks) },
+                        onPlayTracks = { groupTracks ->
+                            groupTracks.firstOrNull()?.let { first ->
+                                playbackViewModel.play(first, groupTracks)
+                            }
+                        },
                         onPlayNext = playbackViewModel::playNext,
                         onAddToQueue = playbackViewModel::addToQueue,
                         onRemoveTrackFromLibrary = { libraryViewModel.ignoreTrack(it.trackId) },
