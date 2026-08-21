@@ -17,45 +17,36 @@ class SourceAcquisitionTest {
     }
 
     @Test
-    fun folderAndFileActionsNeverRequestDeviceWidePermission() {
+    fun folderActionNeverRequestsDeviceWidePermission() {
         val coordinator = SourceAcquisitionCoordinator()
 
         assertEquals(AcquisitionCommand.OPEN_FOLDER, coordinator.chooseFolder())
-        assertEquals(AcquisitionCommand.OPEN_MP3_FILES, coordinator.chooseFiles())
         assertFalse(coordinator.devicePermissionWasRequested)
     }
 
     @Test
-    fun selectedDocumentsRegisterOnlyReturnedUrisAndTakeReadGrants() = runTest {
-        val registry = InMemorySourceRegistry()
-        val permissions = RecordingSafPermissionStore()
-        var nextId = 0
-        val handler = SourceSelectionHandler(registry, permissions) { SourceId("id-${nextId++}") }
-
-        handler.registerDocuments(
-            listOf(
-                SelectedDocument("content://picked/one", "One.mp3"),
-                SelectedDocument("content://picked/two", "Two.mp3"),
-                SelectedDocument("content://picked/one", "One again.mp3"),
-            ),
-        )
-
-        assertEquals(
-            listOf("content://picked/one", "content://picked/two"),
-            registry.observeSources().first().map { it.identity },
-        )
-        assertEquals(setOf("content://picked/one", "content://picked/two"), permissions.taken)
+    fun individualFileAcquisitionIsNotExposed() {
+        assertFalse(AcquisitionCommand.entries.any { it.name == "OPEN_MP3_FILES" })
+        assertFalse(SourceAcquisitionCoordinator::class.java.methods.any { it.name == "chooseFiles" })
+        assertFalse(SourceSelectionHandler::class.java.methods.any { it.name == "registerDocuments" })
     }
 
     @Test
-    fun selectedFolderTakesOnlyPersistedReadAccess() = runTest {
+    fun selectedFoldersAppendDistinctTreesAndTakeReadGrants() = runTest {
         val registry = InMemorySourceRegistry()
         val permissions = RecordingSafPermissionStore()
-        val handler = SourceSelectionHandler(registry, permissions) { SourceId("folder") }
+        var nextId = 0
+        val handler = SourceSelectionHandler(registry, permissions) { SourceId("folder-${nextId++}") }
 
         handler.registerFolder("content://tree/music", "Music")
+        handler.registerFolder("content://tree/concerts", "Concerts")
+        handler.registerFolder("content://tree/music", "Music again")
 
-        assertEquals(setOf("content://tree/music"), permissions.taken)
+        assertEquals(
+            listOf("content://tree/music", "content://tree/concerts"),
+            registry.observeSources().first().map { it.identity },
+        )
+        assertEquals(setOf("content://tree/music", "content://tree/concerts"), permissions.taken)
         assertEquals(emptySet<String>(), permissions.released)
     }
 

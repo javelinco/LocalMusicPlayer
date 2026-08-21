@@ -2,9 +2,7 @@ package com.javelinco.localmusicplayer
 
 import android.Manifest
 import android.content.Intent
-import android.net.Uri
 import android.os.Bundle
-import android.provider.OpenableColumns
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -21,7 +19,6 @@ import androidx.lifecycle.lifecycleScope
 import com.javelinco.localmusicplayer.core.model.SourceId
 import com.javelinco.localmusicplayer.data.source.AndroidSafPermissionStore
 import com.javelinco.localmusicplayer.data.source.MediaStoreSource
-import com.javelinco.localmusicplayer.data.source.SelectedDocument
 import com.javelinco.localmusicplayer.data.source.SourceAcquisitionCoordinator
 import com.javelinco.localmusicplayer.data.source.SourcePickerContracts
 import com.javelinco.localmusicplayer.data.source.SourceSelectionHandler
@@ -57,15 +54,6 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch {
             val wasFirstSource = app.sourceRegistry.observeSources().first().isEmpty()
             selectionHandler.registerFolder(uri.toString(), uri.lastPathSegment ?: "Selected folder")
-            libraryViewModel.onSourceAdded(wasFirstSource, playbackViewModel::stopForDedicatedScan)
-        }
-    }
-
-    private val filePicker = registerForActivityResult(SourcePickerContracts.chooseFiles) { uris ->
-        if (uris.isEmpty()) return@registerForActivityResult
-        lifecycleScope.launch {
-            val wasFirstSource = app.sourceRegistry.observeSources().first().isEmpty()
-            selectionHandler.registerDocuments(uris.map { SelectedDocument(it.toString(), displayName(it)) })
             libraryViewModel.onSourceAdded(wasFirstSource, playbackViewModel::stopForDedicatedScan)
         }
     }
@@ -145,7 +133,6 @@ class MainActivity : ComponentActivity() {
                         onPlayTrack = { playbackViewModel.play(it, tracks) },
                         onPlayPlaylist = playPlaylist,
                         onChooseFolder = { folderPicker.launch(null) },
-                        onChooseFiles = { filePicker.launch(arrayOf(SourcePickerContracts.MP3_MIME_TYPE)) },
                         onFindAll = { showDevicePermissionExplanation = true },
                         onBackgroundScan = libraryViewModel::startBackgroundScan,
                         onDedicatedScan = {
@@ -207,9 +194,4 @@ class MainActivity : ComponentActivity() {
             },
         )
     }
-
-    private fun displayName(uri: Uri): String =
-        contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
-            if (cursor.moveToFirst()) cursor.getString(0) else null
-        } ?: uri.lastPathSegment ?: "Selected MP3"
 }

@@ -24,6 +24,7 @@
 **Files:**
 - Modify: `app/src/test/java/com/javelinco/localmusicplayer/data/source/SourceAcquisitionTest.kt`
 - Modify: `app/src/main/java/com/javelinco/localmusicplayer/data/source/SourcePickerContracts.kt`
+- Modify: `app/src/main/java/com/javelinco/localmusicplayer/MainActivity.kt`
 
 **Interfaces:**
 - Consumes: `SourceRegistry.add(MusicSource)` and `SafPermissionStore.takeReadPermission(String)`.
@@ -82,10 +83,11 @@ Expected: `individualFileAcquisitionIsNotExposed` fails because the obsolete enu
 
 In `SourcePickerContracts.kt`:
 
-- Remove `MP3_MIME_TYPE` and `chooseFiles`.
+- Remove `chooseFiles`; retain `MP3_MIME_TYPE` because source readers use it to recognize MP3 content.
 - Remove `OPEN_MP3_FILES` and `SourceAcquisitionCoordinator.chooseFiles()`.
 - Remove `SelectedDocument` and `SourceSelectionHandler.registerDocuments()`.
 - Keep `chooseFolder`, `requestPermission`, and `registerFolder()` unchanged.
+- Remove the `MainActivity` file-picker launcher, imports, display-name helper, and `onChooseFiles` wiring in the same change so removing the contract does not leave dangling references.
 
 Do not remove `SafDocumentSource`, `SafDocumentReader`, database enum decoding, or backup models.
 
@@ -96,7 +98,7 @@ Run the focused Gradle command from Step 2. Expected: all `SourceAcquisitionTest
 - [ ] **Step 5: Commit**
 
 ```powershell
-git add app/src/test/java/com/javelinco/localmusicplayer/data/source/SourceAcquisitionTest.kt app/src/main/java/com/javelinco/localmusicplayer/data/source/SourcePickerContracts.kt
+git add app/src/test/java/com/javelinco/localmusicplayer/data/source/SourceAcquisitionTest.kt app/src/main/java/com/javelinco/localmusicplayer/data/source/SourcePickerContracts.kt app/src/main/java/com/javelinco/localmusicplayer/MainActivity.kt docs/superpowers/plans/2026-08-21-multiple-folder-sources.md
 git commit -m "refactor: use folder-only scoped source selection"
 ```
 
@@ -195,7 +197,7 @@ git commit -m "feat: make folder sources explicitly additive"
 
 - [ ] **Step 1: Remove obsolete activity wiring**
 
-Delete the `filePicker`, `SelectedDocument`, `Uri`, `OpenableColumns`, and `displayName()` code. Remove `onChooseFiles` from `LibraryActions` construction. Change the device-permission dialog sentence to:
+Confirm the `filePicker`, `SelectedDocument`, `Uri`, `OpenableColumns`, `displayName()`, and `onChooseFiles` activity wiring removed in Task 1 have not returned. Change the device-permission dialog sentence to:
 
 ```text
 Android will grant audio-only access. Selected folders continue to work without it. Music, Please! has no internet or all-files permission.

@@ -7,13 +7,11 @@ object SourcePickerContracts {
     const val MP3_MIME_TYPE = "audio/mpeg"
 
     val chooseFolder = ActivityResultContracts.OpenDocumentTree()
-    val chooseFiles = ActivityResultContracts.OpenMultipleDocuments()
     val requestPermission = ActivityResultContracts.RequestPermission()
 }
 
 enum class AcquisitionCommand {
     OPEN_FOLDER,
-    OPEN_MP3_FILES,
     SHOW_DEVICE_PERMISSION_EXPLANATION,
     REQUEST_MEDIA_AUDIO_PERMISSION,
 }
@@ -24,8 +22,6 @@ class SourceAcquisitionCoordinator {
 
     fun chooseFolder() = AcquisitionCommand.OPEN_FOLDER
 
-    fun chooseFiles() = AcquisitionCommand.OPEN_MP3_FILES
-
     fun findAllDeviceMusic() = AcquisitionCommand.SHOW_DEVICE_PERMISSION_EXPLANATION
 
     fun confirmDeviceMusicExplanation(): AcquisitionCommand {
@@ -33,11 +29,6 @@ class SourceAcquisitionCoordinator {
         return AcquisitionCommand.REQUEST_MEDIA_AUDIO_PERMISSION
     }
 }
-
-data class SelectedDocument(
-    val uri: String,
-    val displayName: String,
-)
 
 class SourceSelectionHandler(
     private val registry: SourceRegistry,
@@ -47,14 +38,5 @@ class SourceSelectionHandler(
     suspend fun registerFolder(uri: String, label: String) {
         permissionStore.takeReadPermission(uri)
         registry.add(SafTreeSource(idFactory(), uri, label))
-    }
-
-    suspend fun registerDocuments(documents: List<SelectedDocument>) {
-        documents.distinctBy(SelectedDocument::uri).forEach { document ->
-            permissionStore.takeReadPermission(document.uri)
-            registry.add(
-                SafDocumentSource(idFactory(), document.uri, document.displayName),
-            )
-        }
     }
 }
