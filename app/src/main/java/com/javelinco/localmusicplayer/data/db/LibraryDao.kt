@@ -125,6 +125,15 @@ interface LibraryDao {
     @Query("SELECT * FROM tracks WHERE trackId = :trackId")
     suspend fun track(trackId: String): TrackEntity?
 
+    @Query("SELECT trackId FROM tracks WHERE sourceId = :sourceId")
+    suspend fun trackIdsForSource(sourceId: String): List<String>
+
+    @Query("SELECT * FROM scan_checkpoints WHERE sourceId = :sourceId")
+    suspend fun checkpointForSource(sourceId: String): ScanCheckpointEntity?
+
+    @Query("UPDATE tracks SET available = 0 WHERE trackId IN (:trackIds)")
+    suspend fun markTracksUnavailable(trackIds: List<String>)
+
     @Query("UPDATE tracks SET available = 0 WHERE sourceId = :sourceId")
     suspend fun markSourceTracksUnavailable(sourceId: String)
 }
