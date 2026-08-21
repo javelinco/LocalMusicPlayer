@@ -161,6 +161,9 @@ class MainActivity : ComponentActivity() {
                     dedicated = dedicated,
                     settings = settings,
                     playback = playback,
+                    onPlayRecentQueue = { queue ->
+                        playbackViewModel.play(queue.selected, queue.tracks)
+                    },
                     backupNames = backups,
                     status = status,
                     onLeaveDedicated = libraryViewModel::leaveDedicatedScan,

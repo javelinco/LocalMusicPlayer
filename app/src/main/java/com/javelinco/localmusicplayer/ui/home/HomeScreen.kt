@@ -18,6 +18,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.javelinco.localmusicplayer.data.db.RecentPlaylistRow
 import com.javelinco.localmusicplayer.data.db.TrackEntity
+import com.javelinco.localmusicplayer.home.RecentPlaybackQueue
+import com.javelinco.localmusicplayer.home.recentPlaybackQueue
 import com.javelinco.localmusicplayer.ui.library.TrackActionCallbacks
 import com.javelinco.localmusicplayer.ui.library.TrackActionMenu
 
@@ -26,8 +28,13 @@ fun HomeScreen(
     recentTracks: List<TrackEntity>,
     recentPlaylists: List<RecentPlaylistRow>,
     trackActions: TrackActionCallbacks,
+    onPlayRecentQueue: (RecentPlaybackQueue) -> Unit,
     onPlayPlaylist: (String) -> Unit,
 ) {
+    fun playRecent(track: TrackEntity) {
+        recentPlaybackQueue(track.trackId, recentTracks)?.let(onPlayRecentQueue)
+    }
+    val recentTrackActions = trackActions.copy(onPlayNow = ::playRecent)
     Column(Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 12.dp)) {
         Text("Recently played", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
         LazyColumn {
@@ -38,8 +45,8 @@ fun HomeScreen(
                         leadingContent = { Icon(Icons.Rounded.History, null) },
                         headlineContent = { Text(track.title ?: track.fileName) },
                         supportingContent = { Text(track.artist ?: "Unknown artist") },
-                        trailingContent = { TrackActionMenu(track, trackActions) },
-                        modifier = Modifier.clickable { trackActions.onPlayNow(track) },
+                        trailingContent = { TrackActionMenu(track, recentTrackActions) },
+                        modifier = Modifier.clickable { playRecent(track) },
                     )
                 }
             }

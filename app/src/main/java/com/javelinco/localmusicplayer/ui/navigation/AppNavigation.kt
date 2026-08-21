@@ -29,6 +29,7 @@ import com.javelinco.localmusicplayer.data.db.RecentPlaylistRow
 import com.javelinco.localmusicplayer.data.db.TrackEntity
 import com.javelinco.localmusicplayer.data.settings.SettingsState
 import com.javelinco.localmusicplayer.data.settings.ThemePreference
+import com.javelinco.localmusicplayer.home.RecentPlaybackQueue
 import com.javelinco.localmusicplayer.playback.service.PlaybackUiState
 import com.javelinco.localmusicplayer.ui.home.HomeScreen
 import com.javelinco.localmusicplayer.ui.library.BackupScreen
@@ -95,6 +96,7 @@ fun AppNavigation(
     dedicated: Boolean,
     settings: SettingsState,
     playback: PlaybackUiState,
+    onPlayRecentQueue: (RecentPlaybackQueue) -> Unit = {},
     backupNames: List<String>,
     status: String?,
     onLeaveDedicated: () -> Unit,
@@ -193,6 +195,7 @@ fun AppNavigation(
                         recentTracks,
                         recentPlaylists,
                         trackActions,
+                        onPlayRecentQueue,
                         libraryActions.onPlayPlaylist,
                     )
                 }
