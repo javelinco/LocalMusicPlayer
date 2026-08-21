@@ -2,10 +2,13 @@ package com.javelinco.localmusicplayer.playback.service
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import com.javelinco.localmusicplayer.data.db.TrackEntity
+import com.javelinco.localmusicplayer.home.RecentPlayRepository
 import java.security.SecureRandom
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -15,6 +18,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 data class PlaybackUiState(
+    val controllerReady: Boolean = false,
     val connected: Boolean = false,
     val hasSession: Boolean = false,
     val currentMediaId: String? = null,
@@ -27,13 +31,17 @@ data class PlaybackUiState(
     val repeatMode: Int = Player.REPEAT_MODE_OFF,
 )
 
-class PlaybackViewModel(application: Application) : AndroidViewModel(application) {
+class PlaybackViewModel(
+    application: Application,
+    private val recentPlays: RecentPlayRepository,
+) : AndroidViewModel(application) {
     private val connection = PlaybackController(application)
     private val mutableState = MutableStateFlow(PlaybackUiState())
     val state: StateFlow<PlaybackUiState> = mutableState.asStateFlow()
     private var controller: androidx.media3.session.MediaController? = null
     private var tracks: List<TrackEntity> = emptyList()
     private var progressJob: Job? = null
+    private val historyTracker = PlaybackHistoryTracker()
 
     private val listener = object : Player.Listener {
         override fun onEvents(player: Player, events: Player.Events) = update(player)
@@ -47,6 +55,8 @@ class PlaybackViewModel(application: Application) : AndroidViewModel(application
                     controller = connected
                     connected.addListener(listener)
                     update(connected)
+                }.onFailure {
+                    mutableState.value = mutableState.value.copy(controllerReady = true)
                 }
             },
             application.mainExecutor,
@@ -54,9 +64,20 @@ class PlaybackViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun play(track: TrackEntity, view: List<TrackEntity>) {
+        play(track, view, playlistId = null)
+    }
+
+    fun playPlaylist(playlistId: String, orderedTracks: List<TrackEntity>) {
+        val first = orderedTracks.firstOrNull() ?: return
+        play(first, orderedTracks, playlistId)
+    }
+
+    private fun play(track: TrackEntity, view: List<TrackEntity>, playlistId: String?) {
         tracks = view.filter(TrackEntity::available)
         val player = controller ?: return
-        val index = tracks.indexOfFirst { it.trackId == track.trackId }.coerceAtLeast(0)
+        val index = tracks.indexOfFirst { it.trackId == track.trackId }
+        if (index < 0) return
+        historyTracker.queueStarted(playlistId)
         player.setMediaItems(tracks.map(MediaItemMapper::toMediaItem), index, 0)
         player.prepare()
         player.play()
@@ -120,6 +141,7 @@ class PlaybackViewModel(application: Application) : AndroidViewModel(application
     private fun update(player: Player) {
         val metadata = player.mediaMetadata
         mutableState.value = mutableState.value.copy(
+            controllerReady = true,
             connected = true,
             hasSession = player.mediaItemCount > 0,
             currentMediaId = player.currentMediaItem?.mediaId,
@@ -130,6 +152,15 @@ class PlaybackViewModel(application: Application) : AndroidViewModel(application
             durationMs = player.duration.takeIf { it > 0 } ?: 0,
             repeatMode = player.repeatMode,
         )
+        historyTracker.onPlaybackState(
+            mediaId = player.currentMediaItem?.mediaId,
+            isPlaying = player.isPlaying,
+        )?.let { record ->
+            viewModelScope.launch {
+                recentPlays.recordTrack(record.trackId)
+                record.playlistId?.let { recentPlays.recordPlaylist(it) }
+            }
+        }
         if (player.isPlaying && progressJob?.isActive != true) {
             progressJob = viewModelScope.launch {
                 while (true) {
@@ -146,5 +177,14 @@ class PlaybackViewModel(application: Application) : AndroidViewModel(application
     override fun onCleared() {
         controller?.removeListener(listener)
         connection.release()
+    }
+
+    class Factory(
+        private val application: Application,
+        private val recentPlays: RecentPlayRepository,
+    ) : ViewModelProvider.Factory {
+        @Suppress("UNCHECKED_CAST")
+        override fun <T : ViewModel> create(modelClass: Class<T>): T =
+            PlaybackViewModel(application, recentPlays) as T
     }
 }

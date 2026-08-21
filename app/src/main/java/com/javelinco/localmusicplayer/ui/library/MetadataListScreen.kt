@@ -5,14 +5,15 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import com.javelinco.localmusicplayer.data.db.NamedGroupSummary
 
 @Composable
-fun MetadataListScreen(groups: Map<String, Int>) {
+fun MetadataListScreen(groups: List<NamedGroupSummary>) {
     LazyColumn {
-        items(groups.entries.sortedBy { it.key.lowercase() }, key = { it.key }) { group ->
+        items(groups, key = NamedGroupSummary::normalizedName) { group ->
             ListItem(
-                headlineContent = { Text(group.key) },
-                supportingContent = { Text("${group.value} tracks") },
+                headlineContent = { Text(group.displayName) },
+                supportingContent = { Text("${group.trackCount} tracks") },
             )
         }
     }

@@ -6,12 +6,13 @@ LocalMusicPlayer is a private, offline Android MP3 player for large personal lib
 
 - Add a user-selected folder, selected MP3 files, or optionally all device audio.
 - Scan metadata into a Room/FTS catalog designed and tested with 50,000 tracks.
-- Search title, artist, album, genre, or filename; browse Tracks, Artists, Albums, and Genres.
+- Search title, artist, album, genre, filename, or playlist within a remembered Library view for Tracks, Artists, Albums, Genres, and Playlists.
 - Play in the background through Android MediaSession/Media3 with lock-screen, Samsung Galaxy Buds, audio-focus, noisy-route, and wake-lock support.
-- Direct Previous, Play/Pause, Next, Favorite, Queue, Shuffle, and Repeat controls.
+- Direct Previous, Play/Pause, Next, Queue, Shuffle, and Repeat controls arranged in two clear rows.
 - Unbiased Fisher–Yates shuffle backed by `SecureRandom`; explicit Repeat Off, Repeat All, and Repeat One behavior.
-- Ordered playlists with duplicates, favorites, light/dark/system appearance, reduced motion, and a visible playing indicator.
-- Quiet scanning while the app is open, plus an exclusive dedicated mode that pauses playback, stays awake, shows progress, and checkpoints when deliberately exited.
+- Ordered playlists with duplicates, light/dark/system appearance, and reduced motion. Favorites data remains backup-compatible but is intentionally absent from the current interface.
+- Library-centered source and scan tools: the first source starts a dedicated scan immediately, later sources scan quietly, and dedicated mode exits automatically when scanning finishes.
+- A contextual Home screen shows Now Playing during playback and bounded, fully local recent-track and recent-playlist history otherwise.
 - User-selected, USB-visible ZIP backups with daily automatic rotation, manual backups, validation, safety backups before restore, and conservative cross-phone relinking.
 
 ## Android and installation
@@ -59,4 +60,4 @@ The release APK produced by Gradle is unsigned until it is signed with a private
 
 ## V1 limits
 
-V1 indexes MP3 only. It reads metadata and existing tags but does not calculate loudness for files without normalization data. The playing graphic is a lightweight state animation; decoded-audio reactive levels are planned for V2. Pending physical acceptance rows requiring a personal library, Galaxy Buds, or a second phone are explicitly marked in the Samsung checklist.
+V1 indexes MP3 only. It reads metadata and existing tags but does not calculate loudness for files without normalization data. A low-priority loudness-analysis pass remains a possible V2 feature. Pending physical acceptance rows requiring a personal library, Galaxy Buds, or a second phone are explicitly marked in the Samsung checklist.

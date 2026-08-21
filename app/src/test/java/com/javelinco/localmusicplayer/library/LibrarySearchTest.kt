@@ -10,6 +10,7 @@ import com.javelinco.localmusicplayer.data.db.TrackEntity
 import com.javelinco.localmusicplayer.playlists.PlaylistSummary
 import com.javelinco.localmusicplayer.ui.library.LibraryView
 import kotlinx.coroutines.test.runTest
+import java.util.Locale
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Before
@@ -71,6 +72,35 @@ class LibrarySearchTest {
             (search.search(LibraryView.PLAYLISTS, "road", playlists) as LibrarySearchResult.Playlists)
                 .items.map { it.name },
         )
+    }
+
+    @Test
+    fun metadataSearchNormalizationIsLocaleInvariant() = runTest {
+        database.libraryDao().applyScanBatch(
+            ScanBatch(
+                tracks = listOf(
+                    track().copy(
+                        trackId = "indigo",
+                        contentUri = "content://music/indigo",
+                        artist = "Indigo",
+                        normalizedArtist = "indigo",
+                    ),
+                ),
+                checkpoint = ScanCheckpointEntity("source", "two", 1, 1),
+            ),
+        )
+        val original = Locale.getDefault()
+        try {
+            Locale.setDefault(Locale.forLanguageTag("tr-TR"))
+
+            assertEquals(
+                listOf("Indigo"),
+                (search.search(LibraryView.ARTISTS, "I", emptyList()) as LibrarySearchResult.NamedGroups)
+                    .items.map { it.displayName },
+            )
+        } finally {
+            Locale.setDefault(original)
+        }
     }
 
     private fun track() = TrackEntity(

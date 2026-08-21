@@ -27,9 +27,12 @@ import com.javelinco.localmusicplayer.data.source.SourcePickerContracts
 import com.javelinco.localmusicplayer.data.source.SourceSelectionHandler
 import com.javelinco.localmusicplayer.library.LibraryViewModel
 import com.javelinco.localmusicplayer.playback.service.PlaybackViewModel
+import com.javelinco.localmusicplayer.ui.library.LibraryActions
+import com.javelinco.localmusicplayer.ui.library.LibraryScreenState
 import com.javelinco.localmusicplayer.ui.navigation.AppNavigation
 import com.javelinco.localmusicplayer.ui.theme.LocalMusicPlayerTheme
 import java.util.UUID
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -37,7 +40,9 @@ class MainActivity : ComponentActivity() {
     private var showDevicePermissionExplanation by mutableStateOf(false)
     private val app: LocalMusicPlayerApp get() = application as LocalMusicPlayerApp
     private val libraryViewModel: LibraryViewModel by viewModels { LibraryViewModel.Factory(app.container) }
-    private val playbackViewModel: PlaybackViewModel by viewModels()
+    private val playbackViewModel: PlaybackViewModel by viewModels {
+        PlaybackViewModel.Factory(application, app.container.recentPlayRepository)
+    }
 
     private val selectionHandler by lazy {
         SourceSelectionHandler(
@@ -50,15 +55,18 @@ class MainActivity : ComponentActivity() {
     private val folderPicker = registerForActivityResult(SourcePickerContracts.chooseFolder) { uri ->
         uri ?: return@registerForActivityResult
         lifecycleScope.launch {
+            val wasFirstSource = app.sourceRegistry.observeSources().first().isEmpty()
             selectionHandler.registerFolder(uri.toString(), uri.lastPathSegment ?: "Selected folder")
-            libraryViewModel.startBackgroundScan()
+            libraryViewModel.onSourceAdded(wasFirstSource, playbackViewModel::stopForDedicatedScan)
         }
     }
 
     private val filePicker = registerForActivityResult(SourcePickerContracts.chooseFiles) { uris ->
+        if (uris.isEmpty()) return@registerForActivityResult
         lifecycleScope.launch {
+            val wasFirstSource = app.sourceRegistry.observeSources().first().isEmpty()
             selectionHandler.registerDocuments(uris.map { SelectedDocument(it.toString(), displayName(it)) })
-            libraryViewModel.startBackgroundScan()
+            libraryViewModel.onSourceAdded(wasFirstSource, playbackViewModel::stopForDedicatedScan)
         }
     }
 
@@ -74,8 +82,9 @@ class MainActivity : ComponentActivity() {
     private val devicePermission = registerForActivityResult(SourcePickerContracts.requestPermission) { granted ->
         if (granted) {
             lifecycleScope.launch {
+                val wasFirstSource = app.sourceRegistry.observeSources().first().isEmpty()
                 app.sourceRegistry.add(MediaStoreSource(SourceId("media-store"), "All music on this device"))
-                libraryViewModel.startBackgroundScan()
+                libraryViewModel.onSourceAdded(wasFirstSource, playbackViewModel::stopForDedicatedScan)
             }
         }
     }
@@ -85,39 +94,81 @@ class MainActivity : ComponentActivity() {
         libraryViewModel.runDailyBackupIfConfigured()
         setContent {
             val tracks by libraryViewModel.tracks.collectAsState()
-            val searchResults by libraryViewModel.searchResults.collectAsState()
+            val artists by libraryViewModel.artists.collectAsState()
+            val albums by libraryViewModel.albums.collectAsState()
+            val genres by libraryViewModel.genres.collectAsState()
             val sources by libraryViewModel.sources.collectAsState()
             val playlists by libraryViewModel.playlists.collectAsState()
             val playlistEntries by libraryViewModel.playlistEntries.collectAsState()
-            val favorites by libraryViewModel.favorites.collectAsState()
             val settings by libraryViewModel.settings.collectAsState()
+            val selectedLibraryView by libraryViewModel.libraryView.collectAsState()
+            val searchOpen by libraryViewModel.searchOpen.collectAsState()
+            val searchQuery by libraryViewModel.searchQuery.collectAsState()
+            val searchResult by libraryViewModel.librarySearchResult.collectAsState()
             val scanProgress by libraryViewModel.scanProgress.collectAsState()
+            val scanMessage by libraryViewModel.scanMessage.collectAsState()
             val dedicated by libraryViewModel.dedicated.collectAsState()
+            val history by libraryViewModel.homeHistory.collectAsState()
             val backups by libraryViewModel.backupNames.collectAsState()
             val status by libraryViewModel.status.collectAsState()
             val playback by playbackViewModel.state.collectAsState()
+            val playPlaylist: (String) -> Unit = { playlistId ->
+                val tracksById = tracks.associateBy { it.trackId }
+                val ordered = playlistEntries
+                    .filter { it.playlistId == playlistId }
+                    .sortedBy { it.position }
+                    .mapNotNull { tracksById[it.trackId] }
+                playbackViewModel.playPlaylist(playlistId, ordered)
+            }
             LocalMusicPlayerTheme(settings.theme) {
                 AppNavigation(
-                    tracks = tracks,
-                    searchResults = searchResults,
-                    sources = sources,
-                    playlists = playlists,
-                    playlistEntries = playlistEntries,
-                    favoriteIds = favorites.mapTo(linkedSetOf()) { it.value },
-                    scanProgress = scanProgress,
+                    libraryState = LibraryScreenState(
+                        selectedView = selectedLibraryView,
+                        tracks = tracks,
+                        artists = artists,
+                        albums = albums,
+                        genres = genres,
+                        playlists = playlists,
+                        playlistEntries = playlistEntries,
+                        sources = sources,
+                        scanProgress = scanProgress,
+                        scanMessage = scanMessage,
+                        searchOpen = searchOpen,
+                        searchQuery = searchQuery,
+                        searchResult = searchResult,
+                    ),
+                    libraryActions = LibraryActions(
+                        onSelectView = libraryViewModel::selectLibraryView,
+                        onOpenSearch = libraryViewModel::openLibrarySearch,
+                        onCloseSearch = libraryViewModel::closeLibrarySearch,
+                        onSearch = libraryViewModel::searchLibrary,
+                        onPlayTrack = { playbackViewModel.play(it, tracks) },
+                        onPlayPlaylist = playPlaylist,
+                        onChooseFolder = { folderPicker.launch(null) },
+                        onChooseFiles = { filePicker.launch(arrayOf(SourcePickerContracts.MP3_MIME_TYPE)) },
+                        onFindAll = { showDevicePermissionExplanation = true },
+                        onBackgroundScan = libraryViewModel::startBackgroundScan,
+                        onDedicatedScan = {
+                            libraryViewModel.enterDedicatedScan(playbackViewModel::stopForDedicatedScan)
+                        },
+                        onPrioritizeScan = {
+                            libraryViewModel.prioritizeScan(playbackViewModel::stopForDedicatedScan)
+                        },
+                        onCreatePlaylist = libraryViewModel::createPlaylist,
+                        onRenamePlaylist = libraryViewModel::renamePlaylist,
+                        onDeletePlaylist = libraryViewModel::deletePlaylist,
+                        onAddToPlaylist = libraryViewModel::addTrackToPlaylist,
+                        onRemovePlaylistEntry = libraryViewModel::removePlaylistEntry,
+                        onMovePlaylistEntry = libraryViewModel::movePlaylistEntry,
+                    ),
+                    recentTracks = history.tracks,
+                    recentPlaylists = history.playlists,
+                    recentLoaded = history.loaded,
                     dedicated = dedicated,
                     settings = settings,
                     playback = playback,
                     backupNames = backups,
                     status = status,
-                    onPlay = { playbackViewModel.play(it, tracks) },
-                    onFavorite = { track, favorite -> libraryViewModel.setFavorite(track.trackId, favorite) },
-                    onSearch = libraryViewModel::search,
-                    onChooseFolder = { folderPicker.launch(null) },
-                    onChooseFiles = { filePicker.launch(arrayOf(SourcePickerContracts.MP3_MIME_TYPE)) },
-                    onFindAll = { showDevicePermissionExplanation = true },
-                    onBackgroundScan = libraryViewModel::startBackgroundScan,
-                    onDedicatedScan = { libraryViewModel.enterDedicatedScan(playbackViewModel::stopForDedicatedScan) },
                     onLeaveDedicated = libraryViewModel::leaveDedicatedScan,
                     onPrevious = playbackViewModel::previous,
                     onPlayPause = playbackViewModel::togglePlayPause,
@@ -125,12 +176,6 @@ class MainActivity : ComponentActivity() {
                     onSeek = playbackViewModel::seekTo,
                     onShuffle = playbackViewModel::toggleShuffle,
                     onRepeat = playbackViewModel::cycleRepeat,
-                    onCreatePlaylist = libraryViewModel::createPlaylist,
-                    onRenamePlaylist = libraryViewModel::renamePlaylist,
-                    onDeletePlaylist = libraryViewModel::deletePlaylist,
-                    onAddToPlaylist = libraryViewModel::addTrackToPlaylist,
-                    onRemovePlaylistEntry = libraryViewModel::removePlaylistEntry,
-                    onMovePlaylistEntry = libraryViewModel::movePlaylistEntry,
                     onChooseBackupFolder = { backupFolderPicker.launch(null) },
                     onManualBackup = libraryViewModel::createManualBackup,
                     onRefreshBackups = libraryViewModel::refreshBackups,

@@ -26,6 +26,7 @@ fun PlaylistScreen(
     playlists: List<PlaylistSummary>,
     entries: List<PlaylistEntryEntity>,
     tracks: List<TrackEntity>,
+    onPlay: (String) -> Unit,
     onCreate: (String) -> Unit,
     onRename: (String, String) -> Unit,
     onDelete: (String) -> Unit,
@@ -51,6 +52,7 @@ fun PlaylistScreen(
             }
         } else {
             Button(onClick = { selectedId = null }) { Text("Back to playlists") }
+            Button(onClick = { onPlay(selected.id.value) }) { Text("Play playlist") }
             OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Playlist name") })
             Row {
                 Button(onClick = { onRename(selected.id.value, name) }) { Text("Rename") }

@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- Consolidated navigation to Home, Library, and More, with search, playlists, sources, and scanning handled contextually inside Library.
+- Added remembered Library views and view-aware database-backed search.
+- Added bounded local recently played history for tracks and playlists.
+- Made first-source dedicated scanning automatic and dedicated mode self-closing on completion or failure.
+- Refined light and dark visual themes and split Now Playing controls into transport and playback-mode rows.
+- Removed Favorites controls and the decorative playing-level indicator from the interface while retaining compatible stored data.
+
 ## 0.1.0 — 2026-08-20
 
 - First working Android V1 candidate.
@@ -11,4 +20,3 @@
 - Playlists, favorites, theme/reduced-motion controls, and playing indicator.
 - Versioned USB-visible backup/restore with automatic rotation and conservative cross-device relinking.
 - Release permission and packaged-dependency gates.
-

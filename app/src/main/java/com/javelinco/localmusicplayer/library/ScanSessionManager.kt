@@ -5,6 +5,7 @@ import com.javelinco.localmusicplayer.data.scan.ScanExecutionMode
 import com.javelinco.localmusicplayer.data.scan.ScanPhase
 import com.javelinco.localmusicplayer.data.scan.ScanProgress
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,35 +21,90 @@ class ScanSessionManager(
     private val mutableMessage = MutableStateFlow<String?>(null)
     val message = mutableMessage.asStateFlow()
     private var scanJob: Job? = null
+    private var backgroundRescanPending = false
+    private var dedicatedTransitionPending = false
+    private var leaveRequested = false
+    private var leaveJob: Job? = null
 
     fun sourceAdded(wasFirstSource: Boolean, stopPlayback: () -> Unit) {
         if (wasFirstSource) startDedicated(stopPlayback) else startBackground()
     }
 
     fun startBackground() {
-        if (scanJob?.isActive == true) return
-        scanJob = scope.launch { runScan(ScanExecutionMode.BACKGROUND) }
+        if (scanJob?.isActive == true) {
+            backgroundRescanPending = true
+            return
+        }
+        launchManaged { runScan(ScanExecutionMode.BACKGROUND) }
     }
 
     fun startDedicated(stopPlayback: () -> Unit) {
-        scanJob?.cancel()
-        scanJob = scope.launch { runDedicated(stopPlayback) }
+        transitionToDedicated(stopPlayback)
     }
 
     fun prioritize(stopPlayback: () -> Unit) {
-        val previous = scanJob
-        scanJob = scope.launch {
-            coordinator.cancelAndCheckpoint()
-            previous?.join()
-            runDedicated(stopPlayback)
-        }
+        transitionToDedicated(stopPlayback)
     }
 
     fun leaveDedicated() {
-        scope.launch {
-            coordinator.cancelAndCheckpoint()
-            mutableDedicated.value = false
+        if (leaveJob?.isActive == true) return
+        leaveRequested = true
+        val previous = scanJob
+        lateinit var launched: Job
+        launched = scope.launch(start = CoroutineStart.LAZY) {
+            try {
+                coordinator.cancelAndCheckpoint()
+                previous?.join()
+                mutableDedicated.value = false
+            } finally {
+                leaveRequested = false
+                if (leaveJob === launched) leaveJob = null
+            }
         }
+        leaveJob = launched
+        launched.start()
+    }
+
+    private fun transitionToDedicated(stopPlayback: () -> Unit) {
+        if (
+            dedicatedTransitionPending ||
+            mutableDedicated.value ||
+            leaveJob?.isActive == true
+        ) return
+        dedicatedTransitionPending = true
+        leaveRequested = false
+        val previous = scanJob
+        backgroundRescanPending = false
+        launchManaged {
+            try {
+                if (previous?.isActive == true) {
+                    coordinator.cancelAndCheckpoint()
+                    previous.join()
+                }
+                if (!leaveRequested) runDedicated(stopPlayback)
+            } finally {
+                dedicatedTransitionPending = false
+            }
+        }
+    }
+
+    private fun launchManaged(block: suspend () -> Unit) {
+        lateinit var launched: Job
+        launched = scope.launch(start = CoroutineStart.LAZY) {
+            try {
+                block()
+            } finally {
+                if (scanJob === launched) {
+                    scanJob = null
+                    if (backgroundRescanPending) {
+                        backgroundRescanPending = false
+                        startBackground()
+                    }
+                }
+            }
+        }
+        scanJob = launched
+        launched.start()
     }
 
     private suspend fun runDedicated(stopPlayback: () -> Unit) {

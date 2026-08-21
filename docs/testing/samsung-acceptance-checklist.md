@@ -4,13 +4,15 @@ Candidate device: Samsung SM-S928U (Galaxy S24 Ultra), Android 16.
 
 | Check | Result | Notes |
 |---|---:|---|
-| Launch without requesting audio permission | Pass | Confirmed with runtime permission test and fresh launch. |
-| Main UI fits phone and exposes library/search/playlists/sources/more | Pass | Inspected live UI hierarchy on SM-S928U. |
-| Library, dedicated scan, playback, and backup Compose suites | Pass | Four tests passed on device. |
+| Launch without requesting audio permission | Pass | Cold-launched the redesigned build after explicitly revoking `READ_MEDIA_AUDIO`; no permission dialog or runtime crash. |
+| First-run setup and primary navigation fit the phone | Pass | Visually inspected the live dark-theme screen on SM-S928U: source choices fit cleanly and persistent navigation contains only Home, Library, and More. |
+| Full Android instrumentation suite | Pass | All 12 tests passed together on SM-S928U / Android 16, including Room migration, Library, navigation, playback controls, dedicated scan, and backup behavior. |
 | MediaSession service connects | Pass | Instrumentation connected to the background service. |
 | Folder-only and file-only source flows | Automated pass | SAF read-only grant tests pass; interactive folder choice remains a user acceptance step. |
 | Whole-device denial preserves scoped sources | Automated pass | Permission-flow test. |
-| Dedicated scan pauses playback, stays awake, checkpoints on exit | Automated pass | UI/runtime contracts tested; long personal-library throughput remains a user acceptance step. |
+| First source starts dedicated scan; later sources scan quietly | Automated pass | Source-addition policy tests cover folder, file, and optional whole-device entry points; personal-library throughput remains a user acceptance step. |
+| Dedicated scan pauses playback, checkpoints on exit, and closes when finished | Automated pass | Scan-session and UI/runtime contracts pass; long personal-library throughput remains a user acceptance step. |
+| Library view memory, contextual search, and two-row playback controls | Pass | Host state/search tests and on-device Compose tests pass; Favorites and the decorative level indicator are absent as designed. |
 | Screen-lock/background playback | Pending personal-library trial | Requires selecting a personal MP3 source. |
 | Galaxy Buds previous/next and 3-second restart | Pending earbuds trial | Direct and MediaSession controls are present. |
 | USB backup folder visibility, manual backup, restore | Pending folder selection | SAF ZIP logic is covered by unit tests. |

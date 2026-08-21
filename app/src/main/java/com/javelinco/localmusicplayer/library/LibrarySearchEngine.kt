@@ -6,6 +6,7 @@ import com.javelinco.localmusicplayer.data.db.NamedGroupSummary
 import com.javelinco.localmusicplayer.data.db.TrackEntity
 import com.javelinco.localmusicplayer.playlists.PlaylistSummary
 import com.javelinco.localmusicplayer.ui.library.LibraryView
+import java.util.Locale
 
 sealed interface LibrarySearchResult {
     data class Tracks(val items: List<TrackEntity>) : LibrarySearchResult
@@ -23,7 +24,7 @@ class LibrarySearchEngine(
         query: String,
         playlists: List<PlaylistSummary>,
     ): LibrarySearchResult {
-        val normalizedQuery = query.trim().lowercase()
+        val normalizedQuery = query.trim().lowercase(Locale.ROOT)
         return when (view) {
             LibraryView.TRACKS -> LibrarySearchResult.Tracks(trackSearch.search(query))
             LibraryView.ARTISTS -> LibrarySearchResult.NamedGroups(

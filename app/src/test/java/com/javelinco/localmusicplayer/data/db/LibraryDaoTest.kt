@@ -77,7 +77,7 @@ class LibraryDaoTest {
             ),
         )
 
-        val groups = libraryDao.albumGroups()
+        val groups = libraryDao.observeAlbumGroups().first()
         val tracks = libraryDao.tracksForAlbum("various artists", "collection")
 
         assertEquals(2, groups.size)
@@ -96,9 +96,9 @@ class LibraryDaoTest {
             ),
         )
 
-        assertEquals("Unknown Album", libraryDao.albumGroups().single().displayTitle)
-        assertEquals("Unknown Artist", libraryDao.artistGroups().single().displayName)
-        assertEquals("Unknown Genre", libraryDao.genreGroups().single().displayName)
+        assertEquals("Unknown Album", libraryDao.observeAlbumGroups().first().single().displayTitle)
+        assertEquals("Unknown Artist", libraryDao.observeArtistGroups().first().single().displayName)
+        assertEquals("Unknown Genre", libraryDao.observeGenreGroups().first().single().displayName)
     }
 
     @Test

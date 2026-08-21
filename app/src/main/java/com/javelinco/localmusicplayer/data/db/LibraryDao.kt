@@ -95,7 +95,7 @@ interface LibraryDao {
         ORDER BY displayArtist COLLATE NOCASE, displayTitle COLLATE NOCASE
         """,
     )
-    suspend fun albumGroups(): List<AlbumSummary>
+    fun observeAlbumGroups(): Flow<List<AlbumSummary>>
 
     @Query(
         """
@@ -122,7 +122,7 @@ interface LibraryDao {
         ORDER BY displayName COLLATE NOCASE
         """,
     )
-    suspend fun artistGroups(): List<NamedGroupSummary>
+    fun observeArtistGroups(): Flow<List<NamedGroupSummary>>
 
     @Query(
         """
@@ -170,7 +170,7 @@ interface LibraryDao {
         ORDER BY displayName COLLATE NOCASE
         """,
     )
-    suspend fun genreGroups(): List<NamedGroupSummary>
+    fun observeGenreGroups(): Flow<List<NamedGroupSummary>>
 
     @Query(
         """
