@@ -11,7 +11,7 @@ The merged release manifest is allowed to contain only these Android system perm
 
 AndroidX may generate an application-private `signature` permission for non-exported dynamic receivers. It cannot be granted to ordinary third-party apps and is accepted by the manifest gate.
 
-LocalMusicPlayer deliberately does **not** request:
+Music, Please! deliberately does **not** request:
 
 - `INTERNET` or network-state access
 - `MANAGE_EXTERNAL_STORAGE` or legacy external-storage access
@@ -20,4 +20,3 @@ LocalMusicPlayer deliberately does **not** request:
 Galaxy Buds controls arrive through Android's MediaSession; the application does not need Bluetooth permission. User-selected music folders and files are retained as read-only Storage Access Framework grants. The separately selected backup folder is retained read/write because backup creation and rotation require it.
 
 Run [`check_release_manifest.ps1`](../scripts/check_release_manifest.ps1) against the merged release manifest to enforce the permission allowlist. Run [`check_packaged_dependencies.ps1`](../scripts/check_packaged_dependencies.ps1) to scan the APK for common network, ads, and telemetry namespaces.
-

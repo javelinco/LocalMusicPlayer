@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Renamed the app and public project to Music, Please! while preserving application and backup compatibility.
 - Consolidated navigation to Home, Library, and More, with search, playlists, sources, and scanning handled contextually inside Library.
 - Added remembered Library views and view-aware database-backed search.
 - Added bounded local recently played history for tracks and playlists.

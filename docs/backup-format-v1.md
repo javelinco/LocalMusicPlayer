@@ -1,6 +1,6 @@
 # Backup format V1
 
-A LocalMusicPlayer backup is an unencrypted ZIP created inside a user-selected Storage Access Framework folder. That folder is intended to be easy to find over USB.
+A Music, Please! backup is an unencrypted ZIP created inside a user-selected Storage Access Framework folder. That folder is intended to be easy to find over USB.
 
 The ZIP contains exactly:
 
@@ -10,6 +10,8 @@ The ZIP contains exactly:
 It never contains MP3 audio, cached artwork, scan checkpoints, scan errors, Room database files, or the FTS search index.
 
 ## Naming and retention
+
+For compatibility with existing installations and restores, backup filenames retain the original LocalMusicPlayer prefix.
 
 - Automatic: `LocalMusicPlayer-auto-YYYYMMDD-HHMMSS.zip`
 - Manual: `LocalMusicPlayer-manual-YYYYMMDD-HHMMSS.zip`
@@ -26,4 +28,3 @@ Restore validates first, then creates and validates a safety backup before repla
 ## Moving to another phone
 
 Storage-provider content URIs are phone-specific. After choosing/scanning music on the new phone, relinking tries an exact relative path first. If that fails, it requires corroborating file size, duration, normalized title, and artist evidence. Equally ranked candidates remain unavailable rather than being guessed. Unavailable playlist entries remain visible and can be repaired after the correct source is selected.
-

@@ -7,10 +7,10 @@
 3. Install:
 
 ```powershell
-adb install LocalMusicPlayer-v0.1.0.apk
+adb install Music-Please-v0.1.0-development-signed.apk
 ```
 
-Use `adb install -r LocalMusicPlayer-v0.1.0.apk` for an update signed by the same key. Android will reject an update signed by a different key; do not uninstall merely to bypass that protection unless the app's local database has already been backed up.
+Use `adb install -r Music-Please-v0.1.0-development-signed.apk` for an update signed by the same key. Android will reject an update signed by a different key; do not uninstall merely to bypass that protection unless the app's local database has already been backed up.
 
 ## Install from the phone
 
@@ -21,4 +21,3 @@ Copy the APK to the phone over USB, open it in My Files, and allow “Install un
 The signing keystore and its password are the permanent identity of this application. Preserve them in at least two secure locations. They are intentionally excluded by [`.gitignore`](../.gitignore) and must never be pushed to GitHub, attached to a release, or copied into the phone's USB-visible backup folder.
 
 The source repository ships an unsigned release build. A maintainer signs it with Android SDK `apksigner`, then verifies it with `apksigner verify --verbose --print-certs` before installation or publication.
-

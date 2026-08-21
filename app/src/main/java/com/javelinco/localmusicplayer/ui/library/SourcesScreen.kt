@@ -30,7 +30,7 @@ fun SourcesScreen(
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         if (sources.isEmpty()) {
             Text("Where is your music?", style = MaterialTheme.typography.headlineSmall)
-            Text("Choose only what LocalMusicPlayer may see. Folder and file choices need no broad audio permission.")
+            Text("Choose only what Music, Please! may see. Folder and file choices need no broad audio permission.")
         } else {
             Text("Music sources", style = MaterialTheme.typography.titleLarge)
         }

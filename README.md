@@ -1,6 +1,8 @@
-# LocalMusicPlayer
+# Music, Please!
 
-LocalMusicPlayer is a private, offline Android MP3 player for large personal libraries. It has no internet permission, ads, telemetry, accounts, cloud service, microphone access, location access, or all-files access.
+**A private, offline Android music player for your own MP3 collection.**
+
+Music, Please! is a private, offline Android MP3 player for large personal libraries. It has no internet permission, ads, telemetry, accounts, cloud service, microphone access, location access, or all-files access.
 
 ## What works
 
