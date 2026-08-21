@@ -45,12 +45,12 @@ class LibraryViewModel(private val container: AppContainer) : ViewModel() {
     val searchResults = mutableSearchResults.asStateFlow()
     private val mutableStatus = MutableStateFlow<String?>(null)
     val status = mutableStatus.asStateFlow()
-    private val mutableDedicated = MutableStateFlow(false)
-    val dedicated = mutableDedicated.asStateFlow()
+    private val scanSession = ScanSessionManager(container.scanCoordinator, viewModelScope)
+    val dedicated = scanSession.dedicated
+    val scanMessage = scanSession.message
     private val mutableBackupNames = MutableStateFlow<List<String>>(emptyList())
     val backupNames = mutableBackupNames.asStateFlow()
     private var searchJob: Job? = null
-    private var scanJob: Job? = null
 
     fun search(query: String, filter: SearchFilter = SearchFilter.ALL) {
         searchJob?.cancel()
@@ -61,26 +61,23 @@ class LibraryViewModel(private val container: AppContainer) : ViewModel() {
     }
 
     fun startBackgroundScan() {
-        if (scanJob?.isActive == true) return
-        scanJob = viewModelScope.launch {
-            container.scanCoordinator.run(ScanExecutionMode.BACKGROUND)
-        }
+        scanSession.startBackground()
     }
 
     fun enterDedicatedScan(stopPlayback: () -> Unit) {
-        scanJob?.cancel()
-        stopPlayback()
-        mutableDedicated.value = true
-        scanJob = viewModelScope.launch {
-            container.scanCoordinator.run(ScanExecutionMode.DEDICATED)
-        }
+        scanSession.startDedicated(stopPlayback)
     }
 
     fun leaveDedicatedScan() {
-        viewModelScope.launch {
-            container.scanCoordinator.cancelAndCheckpoint()
-            mutableDedicated.value = false
-        }
+        scanSession.leaveDedicated()
+    }
+
+    fun onSourceAdded(wasFirstSource: Boolean, stopPlayback: () -> Unit) {
+        scanSession.sourceAdded(wasFirstSource, stopPlayback)
+    }
+
+    fun prioritizeScan(stopPlayback: () -> Unit) {
+        scanSession.prioritize(stopPlayback)
     }
 
     fun setFavorite(trackId: String, favorite: Boolean) {
