@@ -27,7 +27,11 @@ data class TrackActionCallbacks(
 )
 
 @Composable
-fun TrackActionMenu(track: TrackEntity, actions: TrackActionCallbacks) {
+fun TrackActionMenu(
+    track: TrackEntity,
+    actions: TrackActionCallbacks,
+    onRemoveFromRecentlyPlayed: ((TrackEntity) -> Unit)? = null,
+) {
     var expanded by remember { mutableStateOf(false) }
     var confirmRemoval by remember { mutableStateOf(false) }
     val title = track.title ?: track.fileName
@@ -42,6 +46,12 @@ fun TrackActionMenu(track: TrackEntity, actions: TrackActionCallbacks) {
         DropdownMenuItem(text = { Text("Add to playlist") }, onClick = { expanded = false; actions.onAddToPlaylist(track) })
         DropdownMenuItem(text = { Text("Go to artist") }, onClick = { expanded = false; actions.onGoToArtist(track) })
         DropdownMenuItem(text = { Text("Track information") }, onClick = { expanded = false; actions.onShowInformation(track) })
+        onRemoveFromRecentlyPlayed?.let { remove ->
+            DropdownMenuItem(
+                text = { Text("Remove from recently played") },
+                onClick = { expanded = false; remove(track) },
+            )
+        }
         DropdownMenuItem(text = { Text("Remove from library") }, onClick = { expanded = false; confirmRemoval = true })
     }
     if (confirmRemoval) {

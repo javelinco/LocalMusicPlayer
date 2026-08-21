@@ -164,6 +164,8 @@ class MainActivity : ComponentActivity() {
                     onPlayRecentQueue = { queue ->
                         playbackViewModel.play(queue.selected, queue.tracks)
                     },
+                    onRemoveRecentTrack = libraryViewModel::removeRecentTrack,
+                    onRemoveRecentPlaylist = libraryViewModel::removeRecentPlaylist,
                     backupNames = backups,
                     status = status,
                     onLeaveDedicated = libraryViewModel::leaveDedicatedScan,

@@ -97,6 +97,8 @@ fun AppNavigation(
     settings: SettingsState,
     playback: PlaybackUiState,
     onPlayRecentQueue: (RecentPlaybackQueue) -> Unit = {},
+    onRemoveRecentTrack: (String) -> Unit = {},
+    onRemoveRecentPlaylist: (String) -> Unit = {},
     backupNames: List<String>,
     status: String?,
     onLeaveDedicated: () -> Unit,
@@ -197,6 +199,8 @@ fun AppNavigation(
                         trackActions,
                         onPlayRecentQueue,
                         libraryActions.onPlayPlaylist,
+                        onRemoveRecentTrack,
+                        onRemoveRecentPlaylist,
                     )
                 }
                 Destination.LIBRARY -> LibraryScreen(
