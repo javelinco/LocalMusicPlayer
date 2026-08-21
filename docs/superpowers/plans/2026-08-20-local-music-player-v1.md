@@ -68,32 +68,34 @@ benchmark/                             startup/search Macrobenchmark module
 - Create: `app/src/main/res/values/strings.xml`
 - Create: `app/src/main/res/values/themes.xml`
 - Create: `app/src/main/res/xml/backup_rules.xml`
-- Create: `app/src/test/java/com/javelinco/localmusicplayer/BuildContractTest.kt`
+- Create: `scripts/check_release_manifest.ps1`
 
 **Interfaces:**
 - Consumes: Android SDK 37 and Android Studio bundled JDK at `C:\Program Files\Android\Android Studio\jbr`.
-- Produces: installable `app`, `LocalMusicPlayerApp`, and a build-time permission allowlist test used by every later task.
+- Produces: installable `app`, `LocalMusicPlayerApp`, and a merged-manifest permission gate used by every later task.
 
-- [ ] **Step 1: Write the failing build-contract test**
+- [ ] **Step 1: Write the failing merged-manifest contract check**
 
-```kotlin
-class BuildContractTest {
-    @Test fun forbiddenPermissionsNeverEnterMainManifest() {
-        val manifest = File("src/main/AndroidManifest.xml").readText()
-        listOf("INTERNET", "MANAGE_EXTERNAL_STORAGE", "READ_EXTERNAL_STORAGE",
-            "WRITE_EXTERNAL_STORAGE", "BLUETOOTH_CONNECT", "RECORD_AUDIO")
-            .forEach { assertFalse("forbidden permission $it", manifest.contains(it)) }
-        assertTrue(manifest.contains("READ_MEDIA_AUDIO"))
-        assertTrue(manifest.contains("FOREGROUND_SERVICE_MEDIA_PLAYBACK"))
-    }
-}
+```powershell
+param([string]$ManifestPath = "app/build/intermediates/merged_manifests/debug/processDebugManifest/AndroidManifest.xml")
+$approved = @(
+  "android.permission.READ_MEDIA_AUDIO",
+  "android.permission.FOREGROUND_SERVICE",
+  "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
+)
+[xml]$manifest = Get-Content -Raw -LiteralPath $ManifestPath
+$actual = @($manifest.manifest.'uses-permission' | ForEach-Object { $_.'android:name' })
+$unexpected = @($actual | Where-Object { $_ -notin $approved })
+if ($unexpected.Count -ne 0) { throw "Unexpected permissions: $($unexpected -join ', ')" }
+$missing = @($approved | Where-Object { $_ -notin $actual })
+if ($missing.Count -ne 0) { throw "Missing approved permissions: $($missing -join ', ')" }
 ```
 
 - [ ] **Step 2: Create the Gradle wrapper and run the red test**
 
-Run with Studio's JDK: `./gradlew.bat :app:testDebugUnitTest --tests "*.BuildContractTest"`
+Run: `./scripts/check_release_manifest.ps1`
 
-Expected: FAIL because the Android module and manifest do not exist.
+Expected: FAIL because the merged manifest does not exist.
 
 - [ ] **Step 3: Add the minimal project and manifest**
 
@@ -109,14 +111,14 @@ Set `android:allowBackup="false"`; V1 uses its own portable backup rather than O
 
 - [ ] **Step 4: Run build and permission checks**
 
-Run: `./gradlew.bat :app:testDebugUnitTest :app:processDebugMainManifest :app:lintDebug`
+Run: `./gradlew.bat :app:testDebugUnitTest :app:processDebugMainManifest :app:lintDebug` then `./scripts/check_release_manifest.ps1`.
 
 Expected: PASS; merged-manifest inspection shows no forbidden permission.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add -- settings.gradle.kts build.gradle.kts gradle.properties gradle app
+git add -- settings.gradle.kts build.gradle.kts gradle.properties gradle app scripts/check_release_manifest.ps1
 git commit -m "build: scaffold offline Android application"
 ```
 
@@ -696,7 +698,7 @@ git commit -m "feat: integrate complete offline player lifecycle"
 - Create: `benchmark/src/main/java/com/javelinco/localmusicplayer/benchmark/StartupBenchmark.kt`
 - Create: `benchmark/src/main/java/com/javelinco/localmusicplayer/benchmark/SearchBenchmark.kt`
 - Create: `app/src/test/java/com/javelinco/localmusicplayer/library/LargeLibraryTest.kt`
-- Create: `scripts/check_release_manifest.ps1`
+- Modify: `scripts/check_release_manifest.ps1`
 - Create: `scripts/check_packaged_dependencies.ps1`
 - Create: `docs/testing/samsung-acceptance-checklist.md`
 - Modify: `settings.gradle.kts`
@@ -760,11 +762,11 @@ git commit -m "test: add privacy and large-library release gates"
 
 - [ ] **Step 1: Write documentation verification assertions**
 
-Extend `BuildContractTest` to assert README links resolve locally and the documented permission list matches the allowlist used by the manifest script.
+Create `scripts/check_documentation_links.ps1` to resolve every repository-relative Markdown link in README and the V1 documents, then fail if any target is absent. Keep the canonical approved permission set in `docs/permissions.md` and have `check_release_manifest.ps1` emit that set in its successful report.
 
 - [ ] **Step 2: Run and confirm failure**
 
-Run: `./gradlew.bat :app:testDebugUnitTest --tests "*.BuildContractTest"`
+Run: `./scripts/check_documentation_links.ps1`
 
 Expected: FAIL until documentation files and matching allowlist exist.
 
@@ -781,7 +783,7 @@ Expected: all automated checks and both-device acceptance rows pass.
 - [ ] **Step 5: Commit and publish**
 
 ```bash
-git add -- README.md docs CHANGELOG.md .gitignore app/src/test/java/com/javelinco/localmusicplayer/BuildContractTest.kt
+git add -- README.md docs CHANGELOG.md .gitignore scripts/check_documentation_links.ps1
 git commit -m "docs: prepare LocalMusicPlayer v1"
 ```
 
