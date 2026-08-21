@@ -7,7 +7,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.Button
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.ChevronRight
+import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -16,6 +20,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import com.javelinco.localmusicplayer.data.db.PlaylistEntryEntity
 import com.javelinco.localmusicplayer.data.db.TrackEntity
 import com.javelinco.localmusicplayer.playlists.PlaylistSummary
@@ -30,7 +35,7 @@ fun PlaylistScreen(
     onCreate: (String) -> Unit,
     onRename: (String, String) -> Unit,
     onDelete: (String) -> Unit,
-    onAdd: (String, String) -> Unit,
+    onAdd: (String, List<String>) -> Unit,
     onRemove: (String, String) -> Unit,
     onMove: (String, Int, Int) -> Unit,
 ) {
@@ -46,12 +51,14 @@ fun PlaylistScreen(
                     ListItem(
                         headlineContent = { Text(playlist.name) },
                         supportingContent = { Text("${playlist.trackCount} tracks") },
+                        trailingContent = { Icon(Icons.Rounded.ChevronRight, "Open ${playlist.name}") },
                         modifier = Modifier.clickable { selectedId = playlist.id.value; name = playlist.name },
                     )
                 }
             }
         } else {
             Button(onClick = { selectedId = null }) { Text("Back to playlists") }
+            Text(selected.name, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
             Button(onClick = { onPlay(selected.id.value) }) { Text("Play playlist") }
             OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Playlist name") })
             Row {
@@ -81,7 +88,7 @@ fun PlaylistScreen(
                 items(tracks, key = TrackEntity::trackId) { track ->
                     ListItem(
                         headlineContent = { Text(track.title ?: track.fileName) },
-                        trailingContent = { Button(onClick = { onAdd(selected.id.value, track.trackId) }) { Text("Add") } },
+                        trailingContent = { Button(onClick = { onAdd(selected.id.value, listOf(track.trackId)) }) { Text("Add") } },
                     )
                 }
             }

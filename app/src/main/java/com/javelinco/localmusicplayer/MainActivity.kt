@@ -158,7 +158,7 @@ class MainActivity : ComponentActivity() {
                         onCreatePlaylist = libraryViewModel::createPlaylist,
                         onRenamePlaylist = libraryViewModel::renamePlaylist,
                         onDeletePlaylist = libraryViewModel::deletePlaylist,
-                        onAddToPlaylist = libraryViewModel::addTrackToPlaylist,
+                        onAddTracksToPlaylist = libraryViewModel::addTracksToPlaylist,
                         onRemovePlaylistEntry = libraryViewModel::removePlaylistEntry,
                         onMovePlaylistEntry = libraryViewModel::movePlaylistEntry,
                     ),

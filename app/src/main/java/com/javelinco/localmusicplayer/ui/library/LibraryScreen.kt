@@ -11,6 +11,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.PlaylistAdd
 import androidx.compose.material.icons.rounded.ArrowDropDown
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.FolderOpen
@@ -83,7 +84,7 @@ data class LibraryActions(
     val onCreatePlaylist: (String) -> Unit = {},
     val onRenamePlaylist: (String, String) -> Unit = { _, _ -> },
     val onDeletePlaylist: (String) -> Unit = {},
-    val onAddToPlaylist: (String, String) -> Unit = { _, _ -> },
+    val onAddTracksToPlaylist: (String, List<String>) -> Unit = { _, _ -> },
     val onRemovePlaylistEntry: (String, String) -> Unit = { _, _ -> },
     val onMovePlaylistEntry: (String, Int, Int) -> Unit = { _, _, _ -> },
 )
@@ -93,6 +94,19 @@ data class LibraryActions(
 fun LibraryScreen(state: LibraryScreenState, actions: LibraryActions) {
     var menuExpanded by remember { mutableStateOf(false) }
     var toolsOpen by remember { mutableStateOf(false) }
+    var openedGroup by remember(state.selectedView) { mutableStateOf<OpenedMetadataGroup?>(null) }
+    var pendingAddition by remember { mutableStateOf<PendingPlaylistAddition?>(null) }
+
+    fun requestTrackAddition(track: TrackEntity) {
+        pendingAddition = PendingPlaylistAddition(track.title ?: track.fileName, listOf(track.trackId))
+    }
+
+    fun requestGroupAddition(view: LibraryView, group: NamedGroupSummary) {
+        val trackIds = tracksForMetadataGroup(view, group.normalizedName, state.tracks)
+            .map(TrackEntity::trackId)
+        pendingAddition = PendingPlaylistAddition(group.displayName, trackIds)
+    }
+
     Column(Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 10.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text("Library", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
@@ -173,9 +187,30 @@ fun LibraryScreen(state: LibraryScreenState, actions: LibraryActions) {
             )
             return@Column
         }
+
+        openedGroup?.let { opened ->
+            val matchingTracks = remember(state.tracks, opened) {
+                tracksForMetadataGroup(opened.view, opened.group.normalizedName, state.tracks)
+            }
+            MetadataDetailScreen(
+                title = opened.group.displayName,
+                parentLabel = opened.view.label,
+                tracks = matchingTracks,
+                onBack = { openedGroup = null },
+                onPlayTrack = actions.onPlayTrack,
+                onAddTrack = ::requestTrackAddition,
+                onAddAll = { requestGroupAddition(opened.view, opened.group) },
+            )
+            return@Column
+        }
+
         when (val result = state.searchResult) {
-            is LibrarySearchResult.Tracks -> TrackList(result.items, actions.onPlayTrack)
-            is LibrarySearchResult.NamedGroups -> MetadataListScreen(result.items)
+            is LibrarySearchResult.Tracks -> TrackList(result.items, actions.onPlayTrack, ::requestTrackAddition)
+            is LibrarySearchResult.NamedGroups -> MetadataListScreen(
+                groups = result.items,
+                onOpen = { openedGroup = OpenedMetadataGroup(state.selectedView, it) },
+                onAddToPlaylist = { requestGroupAddition(state.selectedView, it) },
+            )
             is LibrarySearchResult.Albums -> AlbumList(result.items)
             is LibrarySearchResult.Playlists -> PlaylistScreen(
                 result.items,
@@ -185,22 +220,51 @@ fun LibraryScreen(state: LibraryScreenState, actions: LibraryActions) {
                 actions.onCreatePlaylist,
                 actions.onRenamePlaylist,
                 actions.onDeletePlaylist,
-                actions.onAddToPlaylist,
+                actions.onAddTracksToPlaylist,
                 actions.onRemovePlaylistEntry,
                 actions.onMovePlaylistEntry,
             )
-            null -> LibraryBrowseContent(state, actions)
+            null -> LibraryBrowseContent(
+                state = state,
+                actions = actions,
+                onOpenGroup = { openedGroup = OpenedMetadataGroup(state.selectedView, it) },
+                onAddTrack = ::requestTrackAddition,
+                onAddGroup = { requestGroupAddition(state.selectedView, it) },
+            )
         }
+    }
+
+    pendingAddition?.let { request ->
+        PlaylistPickerDialog(
+            request = request,
+            playlists = state.playlists,
+            onChoose = { playlistId ->
+                actions.onAddTracksToPlaylist(playlistId, request.trackIds)
+                pendingAddition = null
+            },
+            onGoToPlaylists = {
+                pendingAddition = null
+                openedGroup = null
+                actions.onSelectView(LibraryView.PLAYLISTS)
+            },
+            onDismiss = { pendingAddition = null },
+        )
     }
 }
 
 @Composable
-private fun LibraryBrowseContent(state: LibraryScreenState, actions: LibraryActions) {
+private fun LibraryBrowseContent(
+    state: LibraryScreenState,
+    actions: LibraryActions,
+    onOpenGroup: (NamedGroupSummary) -> Unit,
+    onAddTrack: (TrackEntity) -> Unit,
+    onAddGroup: (NamedGroupSummary) -> Unit,
+) {
     when (state.selectedView) {
-        LibraryView.TRACKS -> TrackList(state.tracks, actions.onPlayTrack)
-        LibraryView.ARTISTS -> MetadataListScreen(state.artists)
+        LibraryView.TRACKS -> TrackList(state.tracks, actions.onPlayTrack, onAddTrack)
+        LibraryView.ARTISTS -> MetadataListScreen(state.artists, onOpenGroup, onAddGroup)
         LibraryView.ALBUMS -> AlbumList(state.albums)
-        LibraryView.GENRES -> MetadataListScreen(state.genres)
+        LibraryView.GENRES -> MetadataListScreen(state.genres, onOpenGroup, onAddGroup)
         LibraryView.PLAYLISTS -> PlaylistScreen(
             state.playlists,
             state.playlistEntries,
@@ -209,7 +273,7 @@ private fun LibraryBrowseContent(state: LibraryScreenState, actions: LibraryActi
             actions.onCreatePlaylist,
             actions.onRenamePlaylist,
             actions.onDeletePlaylist,
-            actions.onAddToPlaylist,
+            actions.onAddTracksToPlaylist,
             actions.onRemovePlaylistEntry,
             actions.onMovePlaylistEntry,
         )
@@ -217,7 +281,11 @@ private fun LibraryBrowseContent(state: LibraryScreenState, actions: LibraryActi
 }
 
 @Composable
-fun TrackList(tracks: List<TrackEntity>, onPlay: (TrackEntity) -> Unit) {
+fun TrackList(
+    tracks: List<TrackEntity>,
+    onPlay: (TrackEntity) -> Unit,
+    onAddToPlaylist: ((TrackEntity) -> Unit)? = null,
+) {
     if (tracks.isEmpty()) {
         Text("No scanned MP3s yet.", modifier = Modifier.padding(top = 18.dp))
         return
@@ -238,30 +306,58 @@ fun TrackList(tracks: List<TrackEntity>, onPlay: (TrackEntity) -> Unit) {
                 ),
                 elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
             ) {
-                Column(
-                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(start = 14.dp, end = 4.dp, top = 6.dp, bottom = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(
-                        text = track.title ?: track.fileName,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    Text(
-                        text = listOfNotNull(track.artist, track.albumTitle)
-                            .joinToString(" — ")
-                            .ifBlank { track.fileName },
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+                    Column(
+                        modifier = Modifier.weight(1f).padding(vertical = 4.dp),
+                        verticalArrangement = Arrangement.spacedBy(2.dp),
+                    ) {
+                        Text(
+                            text = track.title ?: track.fileName,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        Text(
+                            text = listOfNotNull(track.artist, track.albumTitle)
+                                .joinToString(" — ")
+                                .ifBlank { track.fileName },
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                    onAddToPlaylist?.let { onAdd ->
+                        IconButton(onClick = { onAdd(track) }) {
+                            Icon(
+                                Icons.AutoMirrored.Rounded.PlaylistAdd,
+                                "Add ${track.title ?: track.fileName} to playlist",
+                            )
+                        }
+                    }
                 }
             }
         }
     }
+}
+
+internal data class OpenedMetadataGroup(
+    val view: LibraryView,
+    val group: NamedGroupSummary,
+)
+
+internal fun tracksForMetadataGroup(
+    view: LibraryView,
+    normalizedName: String,
+    tracks: List<TrackEntity>,
+): List<TrackEntity> = when (view) {
+    LibraryView.ARTISTS -> tracks.filter { it.normalizedArtist == normalizedName }
+    LibraryView.GENRES -> tracks.filter { it.normalizedGenre == normalizedName }
+    else -> emptyList()
 }
 
 @Composable
