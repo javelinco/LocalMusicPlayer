@@ -1,6 +1,7 @@
 .gradle/
 .idea/
 .worktrees/
+.superpowers/
 **/build/
 local.properties
 *.jks
