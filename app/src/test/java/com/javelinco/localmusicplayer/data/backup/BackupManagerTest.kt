@@ -45,6 +45,22 @@ class BackupManagerTest {
         assertTrue(storage.files.keys.any { "-safety-" in it })
     }
 
+    @Test
+    fun manualBackupKeepsLegacyFilenamePrefixAfterBrandRename() = runTest {
+        val storage = FakeBackupStorage()
+        val instant = Instant.parse("2026-08-21T12:34:56Z")
+        val manager = BackupManager(
+            storage = storage,
+            snapshot = { bundle(instant.toEpochMilli()) },
+            nowEpochMs = { instant.toEpochMilli() },
+        )
+
+        val name = manager.createManual()
+
+        assertEquals("LocalMusicPlayer-manual-20260821-123456.zip", name)
+        assertTrue(name in storage.files)
+    }
+
     private fun bundle(now: Long) = BackupBundle(
         BackupManifest(createdAtEpochMs = now, appVersion = "test"),
         BackupUserData(settings = mapOf("theme" to "dark")),
