@@ -6,7 +6,8 @@ Candidate device: Samsung SM-S928U (Galaxy S24 Ultra), Android 16.
 |---|---:|---|
 | Launch without requesting audio permission | Pass | Cold-launched the redesigned build after explicitly revoking `READ_MEDIA_AUDIO`; no permission dialog or runtime crash. |
 | First-run setup and primary navigation fit the phone | Pass | Visually inspected the live dark-theme screen on SM-S928U: source choices fit cleanly and persistent navigation contains only Home, Library, and More. |
-| Full Android instrumentation suite | Pass | All 12 tests passed together on SM-S928U / Android 16, including Room migration, Library, navigation, playback controls, dedicated scan, and backup behavior. |
+| Full Android instrumentation suite | Pass | All 13 tests passed together on SM-S928U / Android 16, including branding identity, Room migration, Library, navigation, playback controls, dedicated scan, and backup behavior. |
+| Music, Please! signed update and state preservation | Pass | Installed the prior signed release, selected Light appearance, then installed the renamed signed release with `adb install -r`. First-install time remained unchanged, Light stayed selected, the new label/copy appeared, `READ_MEDIA_AUDIO` was revoked, cold launch succeeded, and the crash log was empty. |
 | MediaSession service connects | Pass | Instrumentation connected to the background service. |
 | Folder-only and file-only source flows | Automated pass | SAF read-only grant tests pass; interactive folder choice remains a user acceptance step. |
 | Whole-device denial preserves scoped sources | Automated pass | Permission-flow test. |
