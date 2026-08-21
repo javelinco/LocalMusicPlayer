@@ -20,7 +20,11 @@ if ([string]::IsNullOrWhiteSpace($ManifestPath)) {
         $projectManifest
     }
 } else {
-    $resolvedManifest = Join-Path $workspaceRoot $ManifestPath
+    $resolvedManifest = if ([System.IO.Path]::IsPathRooted($ManifestPath)) {
+        $ManifestPath
+    } else {
+        Join-Path $workspaceRoot $ManifestPath
+    }
 }
 
 if (-not (Test-Path -LiteralPath $resolvedManifest -PathType Leaf)) {
