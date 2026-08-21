@@ -9,12 +9,12 @@ import com.javelinco.localmusicplayer.core.model.PlaylistEntryId
 import com.javelinco.localmusicplayer.core.model.PlaylistId
 import com.javelinco.localmusicplayer.data.db.PlaylistEntryEntity
 import com.javelinco.localmusicplayer.data.db.TrackEntity
-import com.javelinco.localmusicplayer.data.scan.ScanExecutionMode
 import com.javelinco.localmusicplayer.data.scan.ScanProgress
 import com.javelinco.localmusicplayer.data.settings.SettingsState
 import com.javelinco.localmusicplayer.data.settings.ThemePreference
 import com.javelinco.localmusicplayer.data.source.MusicSource
 import com.javelinco.localmusicplayer.playlists.PlaylistSummary
+import com.javelinco.localmusicplayer.ui.library.LibraryView
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -26,6 +26,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 class LibraryViewModel(private val container: AppContainer) : ViewModel() {
+    private val librarySearchEngine = LibrarySearchEngine(container.database.libraryDao())
     val tracks = container.database.libraryDao().observeAvailableTracks()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
     val sources: StateFlow<List<MusicSource>> = container.sourceRegistry.observeSources()
@@ -43,6 +44,12 @@ class LibraryViewModel(private val container: AppContainer) : ViewModel() {
 
     private val mutableSearchResults = MutableStateFlow<List<TrackEntity>>(emptyList())
     val searchResults = mutableSearchResults.asStateFlow()
+    private val mutableLibrarySearchResult = MutableStateFlow<LibrarySearchResult?>(null)
+    val librarySearchResult = mutableLibrarySearchResult.asStateFlow()
+    private val mutableLibraryView = MutableStateFlow(LibraryView.TRACKS)
+    val libraryView = mutableLibraryView.asStateFlow()
+    private val mutableSearchOpen = MutableStateFlow(false)
+    val searchOpen = mutableSearchOpen.asStateFlow()
     private val mutableStatus = MutableStateFlow<String?>(null)
     val status = mutableStatus.asStateFlow()
     private val scanSession = ScanSessionManager(container.scanCoordinator, viewModelScope)
@@ -57,6 +64,39 @@ class LibraryViewModel(private val container: AppContainer) : ViewModel() {
         searchJob = viewModelScope.launch {
             delay(180)
             mutableSearchResults.value = container.libraryRepository.search(query, filter)
+        }
+    }
+
+    fun selectLibraryView(view: LibraryView) {
+        mutableLibraryView.value = view
+        mutableLibrarySearchResult.value = null
+        viewModelScope.launch { container.settings.setLibraryView(view) }
+    }
+
+    fun openLibrarySearch() {
+        mutableSearchOpen.value = true
+    }
+
+    fun closeLibrarySearch() {
+        searchJob?.cancel()
+        mutableSearchOpen.value = false
+        mutableLibrarySearchResult.value = null
+    }
+
+    fun searchLibrary(query: String) {
+        searchJob?.cancel()
+        if (query.isBlank()) {
+            mutableLibrarySearchResult.value = null
+            return
+        }
+        val selectedView = mutableLibraryView.value
+        searchJob = viewModelScope.launch {
+            delay(180)
+            mutableLibrarySearchResult.value = librarySearchEngine.search(
+                view = selectedView,
+                query = query,
+                playlists = playlists.value,
+            )
         }
     }
 
@@ -166,6 +206,12 @@ class LibraryViewModel(private val container: AppContainer) : ViewModel() {
             settings.first { it.backupTreeUri != null }.backupTreeUri?.let { uri ->
                 runCatching { container.backupManager(uri).createAutomaticIfDue() }
             }
+        }
+    }
+
+    init {
+        viewModelScope.launch {
+            settings.collect { mutableLibraryView.value = it.libraryView }
         }
     }
 

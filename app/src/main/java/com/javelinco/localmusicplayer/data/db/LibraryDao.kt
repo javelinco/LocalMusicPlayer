@@ -126,6 +126,41 @@ interface LibraryDao {
 
     @Query(
         """
+        SELECT normalizedArtist AS normalizedName,
+            CASE WHEN normalizedArtist = '' THEN 'Unknown Artist'
+                ELSE COALESCE(MAX(artist), 'Unknown Artist') END AS displayName,
+            COUNT(*) AS trackCount
+        FROM tracks
+        WHERE available = 1 AND normalizedArtist LIKE '%' || :query || '%'
+        GROUP BY normalizedArtist
+        ORDER BY displayName COLLATE NOCASE
+        LIMIT :limit
+        """,
+    )
+    suspend fun searchArtistGroups(query: String, limit: Int = 200): List<NamedGroupSummary>
+
+    @Query(
+        """
+        SELECT normalizedAlbumArtist, normalizedAlbumTitle,
+            CASE WHEN normalizedAlbumArtist = '' THEN 'Unknown Artist'
+                ELSE COALESCE(MAX(albumArtist), 'Unknown Artist') END AS displayArtist,
+            CASE WHEN normalizedAlbumTitle = '' THEN 'Unknown Album'
+                ELSE COALESCE(MAX(albumTitle), 'Unknown Album') END AS displayTitle,
+            COUNT(*) AS trackCount
+        FROM tracks
+        WHERE available = 1 AND (
+            normalizedAlbumTitle LIKE '%' || :query || '%' OR
+            normalizedAlbumArtist LIKE '%' || :query || '%'
+        )
+        GROUP BY normalizedAlbumArtist, normalizedAlbumTitle
+        ORDER BY displayArtist COLLATE NOCASE, displayTitle COLLATE NOCASE
+        LIMIT :limit
+        """,
+    )
+    suspend fun searchAlbumGroups(query: String, limit: Int = 200): List<AlbumSummary>
+
+    @Query(
+        """
         SELECT normalizedGenre AS normalizedName,
             CASE WHEN normalizedGenre = '' THEN 'Unknown Genre'
                 ELSE COALESCE(MAX(genre), 'Unknown Genre') END AS displayName,
@@ -136,6 +171,21 @@ interface LibraryDao {
         """,
     )
     suspend fun genreGroups(): List<NamedGroupSummary>
+
+    @Query(
+        """
+        SELECT normalizedGenre AS normalizedName,
+            CASE WHEN normalizedGenre = '' THEN 'Unknown Genre'
+                ELSE COALESCE(MAX(genre), 'Unknown Genre') END AS displayName,
+            COUNT(*) AS trackCount
+        FROM tracks
+        WHERE available = 1 AND normalizedGenre LIKE '%' || :query || '%'
+        GROUP BY normalizedGenre
+        ORDER BY displayName COLLATE NOCASE
+        LIMIT :limit
+        """,
+    )
+    suspend fun searchGenreGroups(query: String, limit: Int = 200): List<NamedGroupSummary>
 
     @Query("SELECT * FROM tracks WHERE trackId = :trackId")
     suspend fun track(trackId: String): TrackEntity?
