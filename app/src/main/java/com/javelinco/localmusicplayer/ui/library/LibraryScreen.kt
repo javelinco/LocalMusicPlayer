@@ -407,6 +407,21 @@ internal fun tracksForMetadataGroup(
     else -> emptyList()
 }
 
+internal fun tracksForAlbum(
+    album: AlbumSummary,
+    tracks: List<TrackEntity>,
+): List<TrackEntity> = tracks
+    .filter {
+        it.normalizedAlbumArtist == album.normalizedAlbumArtist &&
+            it.normalizedAlbumTitle == album.normalizedAlbumTitle
+    }
+    .sortedWith(
+        compareBy<TrackEntity> { it.discNumber ?: 1 }
+            .thenBy { it.trackNumber ?: 0 }
+            .thenBy(String.CASE_INSENSITIVE_ORDER) { it.fileName }
+            .thenBy { it.fileName },
+    )
+
 @Composable
 private fun AlbumList(albums: List<AlbumSummary>) {
     LazyColumn {
