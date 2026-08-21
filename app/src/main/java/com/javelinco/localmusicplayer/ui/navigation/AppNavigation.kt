@@ -24,6 +24,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import com.javelinco.localmusicplayer.data.db.RecentPlaylistRow
 import com.javelinco.localmusicplayer.data.db.TrackEntity
 import com.javelinco.localmusicplayer.data.settings.SettingsState
@@ -38,6 +39,7 @@ import com.javelinco.localmusicplayer.ui.library.LibraryScreenState
 import com.javelinco.localmusicplayer.ui.library.LibraryView
 import com.javelinco.localmusicplayer.ui.library.PendingPlaylistAddition
 import com.javelinco.localmusicplayer.ui.library.PlaylistPickerDialog
+import com.javelinco.localmusicplayer.ui.library.SourcesScreen
 import com.javelinco.localmusicplayer.ui.library.TrackActionCallbacks
 import com.javelinco.localmusicplayer.ui.library.TrackInformationDialog
 import com.javelinco.localmusicplayer.ui.player.MiniPlayer
@@ -57,7 +59,7 @@ internal fun chooseInitialPrimaryDestination(
     else -> PrimaryDestination.LIBRARY
 }
 
-private enum class Destination { HOME, LIBRARY, MORE, NOW_PLAYING, QUEUE, BACKUP, SETTINGS }
+private enum class Destination { HOME, LIBRARY, MORE, NOW_PLAYING, QUEUE, MUSIC_FOLDERS, BACKUP, SETTINGS }
 
 @Composable
 fun PrimaryNavigationBar(selected: PrimaryDestination, onSelect: (PrimaryDestination) -> Unit) {
@@ -199,6 +201,7 @@ fun AppNavigation(
                     libraryActions.copy(onArtistRequestConsumed = { requestedArtist = null }),
                 )
                 Destination.MORE -> MoreScreen(
+                    onMusicFolders = { destination = Destination.MUSIC_FOLDERS },
                     onBackup = { destination = Destination.BACKUP },
                     onSettings = { destination = Destination.SETTINGS },
                 )
@@ -218,6 +221,23 @@ fun AppNavigation(
                     playback.currentMediaId,
                     trackActions,
                 )
+                Destination.MUSIC_FOLDERS -> Column(
+                    Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 12.dp),
+                ) {
+                    Text(
+                        "Music folders and scanning",
+                        style = androidx.compose.material3.MaterialTheme.typography.headlineMedium,
+                    )
+                    SourcesScreen(
+                        sources = libraryState.sources,
+                        onChooseFolder = libraryActions.onChooseFolder,
+                        onFindAll = libraryActions.onFindAll,
+                        onBackgroundScan = libraryActions.onBackgroundScan,
+                        onDedicatedScan = libraryActions.onDedicatedScan,
+                        ignoredTracks = libraryState.ignoredTracks,
+                        onRestoreIgnoredTrack = libraryActions.onRestoreIgnoredTrack,
+                    )
+                }
                 Destination.BACKUP -> BackupScreen(
                     settings.backupTreeUri,
                     backupNames,
@@ -259,11 +279,17 @@ fun AppNavigation(
 
 @Composable
 private fun MoreScreen(
+    onMusicFolders: () -> Unit,
     onBackup: () -> Unit,
     onSettings: () -> Unit,
 ) {
     Column {
         Text("More", style = androidx.compose.material3.MaterialTheme.typography.headlineMedium)
+        ListItem(
+            headlineContent = { Text("Music folders and scanning") },
+            supportingContent = { Text("Add folders, rescan music, and manage ignored tracks") },
+            modifier = Modifier.clickable(onClick = onMusicFolders),
+        )
         ListItem(
             leadingContent = { Icon(Icons.Rounded.Backup, null) },
             headlineContent = { Text("Backup and restore") },

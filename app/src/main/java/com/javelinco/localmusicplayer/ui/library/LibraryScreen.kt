@@ -14,7 +14,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.PlaylistAdd
 import androidx.compose.material.icons.rounded.ArrowDropDown
 import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material.icons.rounded.FolderOpen
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -101,7 +100,6 @@ data class LibraryActions(
 @OptIn(ExperimentalMaterial3Api::class)
 fun LibraryScreen(state: LibraryScreenState, actions: LibraryActions) {
     var menuExpanded by remember { mutableStateOf(false) }
-    var toolsOpen by remember { mutableStateOf(false) }
     var openedGroup by remember(state.selectedView) { mutableStateOf<OpenedMetadataGroup?>(null) }
     var pendingAddition by remember { mutableStateOf<PendingPlaylistAddition?>(null) }
     var pendingInformation by remember { mutableStateOf<TrackEntity?>(null) }
@@ -149,9 +147,6 @@ fun LibraryScreen(state: LibraryScreenState, actions: LibraryActions) {
                         if (state.searchOpen) Icons.Rounded.Close else Icons.Rounded.Search,
                         if (state.searchOpen) "Close search" else "Search ${state.selectedView.label}",
                     )
-                }
-                IconButton(onClick = { toolsOpen = !toolsOpen }) {
-                    Icon(Icons.Rounded.FolderOpen, "Library tools")
                 }
             }
         }
@@ -209,7 +204,7 @@ fun LibraryScreen(state: LibraryScreenState, actions: LibraryActions) {
                 }
             }
         }
-        if (state.sources.isEmpty() || toolsOpen) {
+        if (shouldShowSourceSetupInLibrary(state.sources.size)) {
             SourcesScreen(
                 sources = state.sources,
                 onChooseFolder = actions.onChooseFolder,
@@ -296,6 +291,8 @@ fun LibraryScreen(state: LibraryScreenState, actions: LibraryActions) {
         )
     }
 }
+
+internal fun shouldShowSourceSetupInLibrary(sourceCount: Int): Boolean = sourceCount == 0
 
 @Composable
 private fun LibraryBrowseContent(
