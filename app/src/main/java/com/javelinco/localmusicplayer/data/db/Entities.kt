@@ -101,7 +101,6 @@ data class PlaylistEntity(
 
 @Entity(
     tableName = "playlist_entries",
-    primaryKeys = ["playlistId", "position"],
     foreignKeys = [
         ForeignKey(
             entity = PlaylistEntity::class,
@@ -113,6 +112,7 @@ data class PlaylistEntity(
     indices = [Index("playlistId"), Index("trackId")],
 )
 data class PlaylistEntryEntity(
+    @PrimaryKey val entryId: String,
     val playlistId: String,
     val position: Int,
     val trackId: String,

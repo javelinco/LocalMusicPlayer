@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "c01c769e674775d835fb5984efb5487e",
+    "identityHash": "d34bd46fe18966aab9059fc5f47ef24b",
     "entities": [
       {
         "tableName": "sources",
@@ -414,8 +414,14 @@
       },
       {
         "tableName": "playlist_entries",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`playlistId` TEXT NOT NULL, `position` INTEGER NOT NULL, `trackId` TEXT NOT NULL, `titleSnapshot` TEXT NOT NULL, `contentUriSnapshot` TEXT NOT NULL, `addedAtEpochMs` INTEGER NOT NULL, PRIMARY KEY(`playlistId`, `position`), FOREIGN KEY(`playlistId`) REFERENCES `playlists`(`playlistId`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`entryId` TEXT NOT NULL, `playlistId` TEXT NOT NULL, `position` INTEGER NOT NULL, `trackId` TEXT NOT NULL, `titleSnapshot` TEXT NOT NULL, `contentUriSnapshot` TEXT NOT NULL, `addedAtEpochMs` INTEGER NOT NULL, PRIMARY KEY(`entryId`), FOREIGN KEY(`playlistId`) REFERENCES `playlists`(`playlistId`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
+          {
+            "fieldPath": "entryId",
+            "columnName": "entryId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
           {
             "fieldPath": "playlistId",
             "columnName": "playlistId",
@@ -456,8 +462,7 @@
         "primaryKey": {
           "autoGenerate": false,
           "columnNames": [
-            "playlistId",
-            "position"
+            "entryId"
           ]
         },
         "indices": [
@@ -599,7 +604,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'c01c769e674775d835fb5984efb5487e')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'd34bd46fe18966aab9059fc5f47ef24b')"
     ]
   }
 }

@@ -30,7 +30,7 @@ class ScannerIsolationTest {
         val userData = database.userDataDao()
         userData.upsertPlaylist(PlaylistEntity("p", "Favorites mix", 1, 1))
         userData.upsertPlaylistEntries(
-            listOf(PlaylistEntryEntity("p", 0, "missing", "Missing", "content://missing", 1)),
+            listOf(PlaylistEntryEntity("entry", "p", 0, "missing", "Missing", "content://missing", 1)),
         )
         userData.upsertFavorite(FavoriteEntity("missing", "Missing", "content://missing", 1))
         userData.saveQueueSession(QueueSessionEntity(1, "[\"missing\"]", 0, 0, 1))

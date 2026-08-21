@@ -104,7 +104,7 @@ class LibraryDaoTest {
     @Test
     fun rescanningCatalogDoesNotModifyUserDataAndUnavailableTracksRemainReferenced() = runTest {
         val playlist = PlaylistEntity("playlist", "Road trip", 10, 10)
-        val entry = PlaylistEntryEntity("playlist", 0, "old", "Old song", "content://old", 10)
+        val entry = PlaylistEntryEntity("entry", "playlist", 0, "old", "Old song", "content://old", 10)
         val favorite = FavoriteEntity("old", "Old song", "content://old", 10)
         val queue = QueueSessionEntity(1, "[\"old\"]", 0, 1234, 10)
         userDataDao.upsertPlaylist(playlist)

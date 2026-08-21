@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.Upsert
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface UserDataDao {
@@ -25,14 +26,48 @@ interface UserDataDao {
     @Query("SELECT * FROM playlists ORDER BY playlistId")
     suspend fun playlists(): List<PlaylistEntity>
 
+    @Query("SELECT * FROM playlists ORDER BY name COLLATE NOCASE")
+    fun observePlaylists(): Flow<List<PlaylistEntity>>
+
     @Query("SELECT * FROM playlist_entries WHERE playlistId = :playlistId ORDER BY position")
     suspend fun playlistEntries(playlistId: String): List<PlaylistEntryEntity>
+
+    @Query("SELECT * FROM playlist_entries WHERE playlistId = :playlistId ORDER BY position")
+    fun observePlaylistEntries(playlistId: String): Flow<List<PlaylistEntryEntity>>
 
     @Query("SELECT * FROM playlist_entries ORDER BY playlistId, position")
     suspend fun allPlaylistEntries(): List<PlaylistEntryEntity>
 
+    @Query("SELECT * FROM playlist_entries ORDER BY playlistId, position")
+    fun observeAllPlaylistEntries(): Flow<List<PlaylistEntryEntity>>
+
     @Query("SELECT * FROM favorites ORDER BY trackId")
     suspend fun favorites(): List<FavoriteEntity>
+
+    @Query("SELECT * FROM favorites ORDER BY trackId")
+    fun observeFavorites(): Flow<List<FavoriteEntity>>
+
+    @Query("DELETE FROM playlists WHERE playlistId = :playlistId")
+    suspend fun deletePlaylist(playlistId: String)
+
+    @Query("UPDATE playlists SET name = :name, modifiedAtEpochMs = :modifiedAt WHERE playlistId = :playlistId")
+    suspend fun renamePlaylist(playlistId: String, name: String, modifiedAt: Long)
+
+    @Query("DELETE FROM playlist_entries WHERE entryId = :entryId")
+    suspend fun deletePlaylistEntry(entryId: String)
+
+    @Query("UPDATE playlist_entries SET position = :position WHERE entryId = :entryId")
+    suspend fun updateEntryPosition(entryId: String, position: Int)
+
+    @Transaction
+    suspend fun reorderPlaylistEntries(playlistId: String, orderedEntryIds: List<String>) {
+        val existing = playlistEntries(playlistId).map(PlaylistEntryEntity::entryId).toSet()
+        require(existing == orderedEntryIds.toSet() && existing.size == orderedEntryIds.size)
+        orderedEntryIds.forEachIndexed { position, entryId -> updateEntryPosition(entryId, position) }
+    }
+
+    @Query("DELETE FROM favorites WHERE trackId = :trackId")
+    suspend fun deleteFavorite(trackId: String)
 
     @Query("SELECT * FROM queue_session ORDER BY singletonId")
     suspend fun queueSessions(): List<QueueSessionEntity>
