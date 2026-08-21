@@ -15,12 +15,15 @@ import androidx.room.RoomDatabase
         FavoriteEntity::class,
         QueueSessionEntity::class,
         SettingsMetadataEntity::class,
+        RecentPlayEntity::class,
     ],
-    version = 1,
+    version = 2,
     exportSchema = true,
 )
 abstract class LocalMusicDatabase : RoomDatabase() {
     abstract fun libraryDao(): LibraryDao
 
     abstract fun userDataDao(): UserDataDao
+
+    abstract fun recentPlayDao(): RecentPlayDao
 }

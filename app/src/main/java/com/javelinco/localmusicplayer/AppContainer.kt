@@ -7,6 +7,7 @@ import com.javelinco.localmusicplayer.data.backup.BackupManager
 import com.javelinco.localmusicplayer.data.backup.RoomBackupDataSource
 import com.javelinco.localmusicplayer.data.backup.SafBackupStorage
 import com.javelinco.localmusicplayer.data.db.LocalMusicDatabase
+import com.javelinco.localmusicplayer.data.db.DatabaseMigrations
 import com.javelinco.localmusicplayer.data.scan.AndroidMp3MetadataExtractor
 import com.javelinco.localmusicplayer.data.scan.DefaultScanCoordinator
 import com.javelinco.localmusicplayer.data.scan.RoomScanCatalog
@@ -19,6 +20,7 @@ import com.javelinco.localmusicplayer.data.source.SafDocumentSource
 import com.javelinco.localmusicplayer.data.source.SafTreeReader
 import com.javelinco.localmusicplayer.data.source.SafTreeSource
 import com.javelinco.localmusicplayer.library.LibraryRepository
+import com.javelinco.localmusicplayer.home.RecentPlayRepository
 import com.javelinco.localmusicplayer.playback.queue.QueueEngine
 import com.javelinco.localmusicplayer.playlists.RoomPlaylistRepository
 import kotlinx.coroutines.flow.first
@@ -29,9 +31,10 @@ class AppContainer(context: Context) {
         appContext,
         LocalMusicDatabase::class.java,
         "local-music.db",
-    ).build()
+    ).addMigrations(DatabaseMigrations.MIGRATION_1_2).build()
     val sourceRegistry = RoomSourceRegistry(database.libraryDao())
     val libraryRepository = LibraryRepository(database.libraryDao())
+    val recentPlayRepository = RecentPlayRepository(database.recentPlayDao())
     val playlistRepository = RoomPlaylistRepository(
         dao = database.userDataDao(),
         libraryDao = database.libraryDao(),

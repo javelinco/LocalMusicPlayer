@@ -144,6 +144,17 @@ data class SettingsMetadataEntity(
     val value: String,
 )
 
+@Entity(
+    tableName = "recent_plays",
+    primaryKeys = ["kind", "itemId"],
+    indices = [Index("playedAtEpochMs")],
+)
+data class RecentPlayEntity(
+    val kind: String,
+    val itemId: String,
+    val playedAtEpochMs: Long,
+)
+
 data class ScanBatch(
     val tracks: List<TrackEntity>,
     val checkpoint: ScanCheckpointEntity,
