@@ -14,7 +14,19 @@ class BackupCodecTest {
     fun roundTripContainsOnlyManifestAndUserData() {
         val backup = BackupBundle(
             BackupManifest(createdAtEpochMs = 10, appVersion = "0.1.0"),
-            BackupUserData(playlists = listOf(BackupPlaylist("p", "Mix", listOf("a", "a")))),
+            BackupUserData(
+                playlists = listOf(BackupPlaylist("p", "Mix", listOf("a", "a"))),
+                ignoredTracks = listOf(
+                    BackupIgnoredTrack(
+                        "a",
+                        PortableTrackReference("Music/a.mp3", 10, 20, "song", "artist"),
+                        "Song",
+                        "Artist",
+                        "a.mp3",
+                        30,
+                    ),
+                ),
+            ),
         )
 
         val encoded = BackupCodec.encode(backup)

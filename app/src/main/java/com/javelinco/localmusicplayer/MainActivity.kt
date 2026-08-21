@@ -82,6 +82,7 @@ class MainActivity : ComponentActivity() {
         libraryViewModel.runDailyBackupIfConfigured()
         setContent {
             val tracks by libraryViewModel.tracks.collectAsState()
+            val ignoredTracks by libraryViewModel.ignoredTracks.collectAsState()
             val artists by libraryViewModel.artists.collectAsState()
             val albums by libraryViewModel.albums.collectAsState()
             val genres by libraryViewModel.genres.collectAsState()
@@ -119,6 +120,7 @@ class MainActivity : ComponentActivity() {
                         playlists = playlists,
                         playlistEntries = playlistEntries,
                         sources = sources,
+                        ignoredTracks = ignoredTracks,
                         scanProgress = scanProgress,
                         scanMessage = scanMessage,
                         searchOpen = searchOpen,
@@ -131,6 +133,10 @@ class MainActivity : ComponentActivity() {
                         onCloseSearch = libraryViewModel::closeLibrarySearch,
                         onSearch = libraryViewModel::searchLibrary,
                         onPlayTrack = { playbackViewModel.play(it, tracks) },
+                        onPlayNext = playbackViewModel::playNext,
+                        onAddToQueue = playbackViewModel::addToQueue,
+                        onRemoveTrackFromLibrary = { libraryViewModel.ignoreTrack(it.trackId) },
+                        onRestoreIgnoredTrack = libraryViewModel::restoreIgnoredTrack,
                         onPlayPlaylist = playPlaylist,
                         onChooseFolder = { folderPicker.launch(null) },
                         onFindAll = { showDevicePermissionExplanation = true },

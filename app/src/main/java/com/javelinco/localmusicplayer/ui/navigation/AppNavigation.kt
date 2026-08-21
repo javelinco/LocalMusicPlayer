@@ -20,6 +20,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
@@ -34,6 +35,11 @@ import com.javelinco.localmusicplayer.ui.library.DedicatedScanScreen
 import com.javelinco.localmusicplayer.ui.library.LibraryActions
 import com.javelinco.localmusicplayer.ui.library.LibraryScreen
 import com.javelinco.localmusicplayer.ui.library.LibraryScreenState
+import com.javelinco.localmusicplayer.ui.library.LibraryView
+import com.javelinco.localmusicplayer.ui.library.PendingPlaylistAddition
+import com.javelinco.localmusicplayer.ui.library.PlaylistPickerDialog
+import com.javelinco.localmusicplayer.ui.library.TrackActionCallbacks
+import com.javelinco.localmusicplayer.ui.library.TrackInformationDialog
 import com.javelinco.localmusicplayer.ui.player.MiniPlayer
 import com.javelinco.localmusicplayer.ui.player.NowPlayingScreen
 import com.javelinco.localmusicplayer.ui.player.QueueScreen
@@ -104,6 +110,9 @@ fun AppNavigation(
     onReducedMotion: (Boolean) -> Unit,
 ) {
     var destination by rememberSaveable { mutableStateOf<Destination?>(null) }
+    var pendingPlaylistTrack by remember { mutableStateOf<TrackEntity?>(null) }
+    var pendingInformationTrack by remember { mutableStateOf<TrackEntity?>(null) }
+    var requestedArtist by remember { mutableStateOf<String?>(null) }
     if (dedicated) {
         DedicatedScanScreen(libraryState.scanProgress, onLeaveDedicated)
         return
@@ -124,6 +133,19 @@ fun AppNavigation(
         }
     }
     val current = destination ?: Destination.LIBRARY
+    val trackActions = TrackActionCallbacks(
+        onPlayNow = libraryActions.onPlayTrack,
+        onPlayNext = libraryActions.onPlayNext,
+        onAddToQueue = libraryActions.onAddToQueue,
+        onAddToPlaylist = { pendingPlaylistTrack = it },
+        onGoToArtist = { track ->
+            requestedArtist = track.normalizedArtist
+            libraryActions.onSelectView(LibraryView.ARTISTS)
+            destination = Destination.LIBRARY
+        },
+        onShowInformation = { pendingInformationTrack = it },
+        onRemoveFromLibrary = libraryActions.onRemoveTrackFromLibrary,
+    )
     val primary = when (current) {
         Destination.HOME, Destination.NOW_PLAYING -> PrimaryDestination.HOME
         Destination.LIBRARY -> PrimaryDestination.LIBRARY
@@ -168,11 +190,14 @@ fun AppNavigation(
                     HomeScreen(
                         recentTracks,
                         recentPlaylists,
-                        libraryActions.onPlayTrack,
+                        trackActions,
                         libraryActions.onPlayPlaylist,
                     )
                 }
-                Destination.LIBRARY -> LibraryScreen(libraryState, libraryActions)
+                Destination.LIBRARY -> LibraryScreen(
+                    libraryState.copy(requestedArtist = requestedArtist),
+                    libraryActions.copy(onArtistRequestConsumed = { requestedArtist = null }),
+                )
                 Destination.MORE -> MoreScreen(
                     onBackup = { destination = Destination.BACKUP },
                     onSettings = { destination = Destination.SETTINGS },
@@ -188,7 +213,11 @@ fun AppNavigation(
                     onRepeat,
                     { destination = Destination.QUEUE },
                 )
-                Destination.QUEUE -> QueueScreen(libraryState.tracks, playback.currentMediaId)
+                Destination.QUEUE -> QueueScreen(
+                    playback.queueTracks,
+                    playback.currentMediaId,
+                    trackActions,
+                )
                 Destination.BACKUP -> BackupScreen(
                     settings.backupTreeUri,
                     backupNames,
@@ -201,6 +230,30 @@ fun AppNavigation(
                 Destination.SETTINGS -> SettingsScreen(settings, onTheme, onReducedMotion)
             }
         }
+    }
+    pendingPlaylistTrack?.let { track ->
+        PlaylistPickerDialog(
+            request = PendingPlaylistAddition(track.title ?: track.fileName, listOf(track.trackId)),
+            playlists = libraryState.playlists,
+            onChoose = { playlistId ->
+                libraryActions.onAddTracksToPlaylist(playlistId, listOf(track.trackId))
+                pendingPlaylistTrack = null
+            },
+            onGoToPlaylists = {
+                pendingPlaylistTrack = null
+                libraryActions.onSelectView(LibraryView.PLAYLISTS)
+                destination = Destination.LIBRARY
+            },
+            onDismiss = { pendingPlaylistTrack = null },
+        )
+    }
+    pendingInformationTrack?.let { track ->
+        val source = libraryState.sources.find { it.id.value == track.sourceId }
+        TrackInformationDialog(
+            track,
+            listOfNotNull(source?.label, source?.identity).joinToString(" — ").ifBlank { "Unknown" },
+            onDismiss = { pendingInformationTrack = null },
+        )
     }
 }
 

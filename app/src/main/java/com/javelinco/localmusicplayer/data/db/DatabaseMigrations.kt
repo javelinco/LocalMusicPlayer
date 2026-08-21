@@ -22,4 +22,33 @@ object DatabaseMigrations {
             )
         }
     }
+
+    val MIGRATION_2_3 = object : Migration(2, 3) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `ignored_tracks` (
+                    `ignoreId` TEXT NOT NULL,
+                    `trackId` TEXT,
+                    `sourceId` TEXT,
+                    `contentUri` TEXT,
+                    `relativePath` TEXT,
+                    `fileName` TEXT NOT NULL,
+                    `title` TEXT,
+                    `artist` TEXT,
+                    `normalizedTitle` TEXT NOT NULL,
+                    `normalizedArtist` TEXT NOT NULL,
+                    `durationMs` INTEGER NOT NULL,
+                    `sizeBytes` INTEGER NOT NULL,
+                    `ignoredAtEpochMs` INTEGER NOT NULL,
+                    PRIMARY KEY(`ignoreId`)
+                )
+                """.trimIndent(),
+            )
+            db.execSQL(
+                "CREATE INDEX IF NOT EXISTS `index_ignored_tracks_sourceId` " +
+                    "ON `ignored_tracks` (`sourceId`)",
+            )
+        }
+    }
 }

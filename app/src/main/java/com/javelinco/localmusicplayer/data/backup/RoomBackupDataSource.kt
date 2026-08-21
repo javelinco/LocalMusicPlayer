@@ -4,6 +4,7 @@ import android.net.Uri
 import android.provider.DocumentsContract
 import com.javelinco.localmusicplayer.BuildConfig
 import com.javelinco.localmusicplayer.data.db.FavoriteEntity
+import com.javelinco.localmusicplayer.data.db.IgnoredTrackEntity
 import com.javelinco.localmusicplayer.data.db.LibraryDao
 import com.javelinco.localmusicplayer.data.db.PlaylistEntity
 import com.javelinco.localmusicplayer.data.db.PlaylistEntryEntity
@@ -53,13 +54,30 @@ class RoomBackupDataSource(
                         normalizedArtist = track.normalizedArtist,
                     )
                 },
+                ignoredTracks = libraryDao.ignoredTracks().map { ignored ->
+                    BackupIgnoredTrack(
+                        oldTrackId = ignored.trackId ?: ignored.ignoreId,
+                        reference = PortableTrackReference(
+                            relativePath = ignored.relativePath,
+                            sizeBytes = ignored.sizeBytes,
+                            durationMs = ignored.durationMs,
+                            normalizedTitle = ignored.normalizedTitle,
+                            normalizedArtist = ignored.normalizedArtist,
+                        ),
+                        title = ignored.title,
+                        artist = ignored.artist,
+                        fileName = ignored.fileName,
+                        ignoredAtEpochMs = ignored.ignoredAtEpochMs,
+                    )
+                },
             ),
         )
     }
 
     suspend fun restore(bundle: BackupBundle) {
         val now = clock()
-        val candidates = libraryDao.allTracks().filter { it.available }.map { track ->
+        val allTracks = libraryDao.allTracks()
+        val candidates = allTracks.map { track ->
             RelinkCandidate(
                 trackId = com.javelinco.localmusicplayer.core.model.TrackId(track.trackId),
                 relativePath = track.contentUri.portablePath(),
@@ -73,6 +91,7 @@ class RoomBackupDataSource(
             (TrackRelinker.relink(reference, candidates) as? RelinkResult.Matched)?.trackId?.value
         }
         fun restoredTrackId(old: String): String = relinked[old] ?: old
+        val currentTracks = allTracks.associateBy { it.trackId }
 
         val playlists = bundle.userData.playlists.map {
             PlaylistEntity(it.id, it.name, now, now)
@@ -107,6 +126,27 @@ class RoomBackupDataSource(
                 settings = bundle.userData.settings.map { SettingsMetadataEntity(it.key, it.value) },
             ),
         )
+        val ignored = bundle.userData.ignoredTracks.map { backup ->
+            val linkedId = (TrackRelinker.relink(backup.reference, candidates) as? RelinkResult.Matched)
+                ?.trackId?.value
+            val track = linkedId?.let(currentTracks::get)
+            IgnoredTrackEntity(
+                ignoreId = linkedId ?: backup.oldTrackId,
+                trackId = linkedId,
+                sourceId = track?.sourceId,
+                contentUri = track?.contentUri,
+                relativePath = backup.reference.relativePath,
+                fileName = track?.fileName ?: backup.fileName,
+                title = track?.title ?: backup.title,
+                artist = track?.artist ?: backup.artist,
+                normalizedTitle = backup.reference.normalizedTitle,
+                normalizedArtist = backup.reference.normalizedArtist,
+                durationMs = backup.reference.durationMs,
+                sizeBytes = backup.reference.sizeBytes,
+                ignoredAtEpochMs = backup.ignoredAtEpochMs,
+            )
+        }
+        libraryDao.replaceIgnoredTracks(ignored)
     }
 }
 

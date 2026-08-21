@@ -50,6 +50,45 @@ class LibraryDaoTest {
         assertEquals(1, sources.observeSources().first().size)
     }
 
+    @Test
+    fun ignoredTrackDisappearsFromLibraryAndCanBeRestored() = runTest {
+        val dao = database.libraryDao()
+        dao.applyScanBatch(
+            ScanBatch(
+                tracks = listOf(track("first", "Opening.mp3", disc = 1, number = 1)),
+                checkpoint = ScanCheckpointEntity("source", "done", 1, 10),
+            ),
+        )
+
+        dao.ignoreTrack("first", ignoredAtEpochMs = 20)
+
+        assertEquals(emptyList<TrackEntity>(), dao.observeAvailableTracks().first())
+        assertEquals("first", dao.observeIgnoredTracks().first().single().ignoreId)
+        assertEquals("first", dao.allTracks().single().trackId)
+
+        dao.restoreIgnoredTrack("first")
+
+        assertEquals("first", dao.observeAvailableTracks().first().single().trackId)
+        assertEquals(emptyList<IgnoredTrackEntity>(), dao.observeIgnoredTracks().first())
+    }
+
+    @Test
+    fun scanBatchCannotMakeAnIgnoredTrackAvailableAgain() = runTest {
+        val dao = database.libraryDao()
+        val ignored = track("first", "Opening.mp3", disc = 1, number = 1)
+        dao.applyScanBatch(
+            ScanBatch(listOf(ignored), ScanCheckpointEntity("source", "one", 1, 10)),
+        )
+        dao.ignoreTrack("first", ignoredAtEpochMs = 20)
+
+        dao.applyScanBatch(
+            ScanBatch(listOf(ignored.copy(modifiedAtEpochMs = 30)), ScanCheckpointEntity("source", "two", 2, 30)),
+        )
+
+        assertEquals(false, dao.track("first")!!.available)
+        assertEquals(emptyList<TrackEntity>(), dao.searchTracks("opening*"))
+    }
+
     private fun track(id: String, fileName: String, disc: Int, number: Int) = TrackEntity(
         trackId = id,
         sourceId = "source",

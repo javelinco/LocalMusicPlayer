@@ -52,6 +52,23 @@ data class TrackEntity(
     val available: Boolean,
 )
 
+@Entity(tableName = "ignored_tracks", indices = [Index("sourceId")])
+data class IgnoredTrackEntity(
+    @PrimaryKey val ignoreId: String,
+    val trackId: String?,
+    val sourceId: String?,
+    val contentUri: String?,
+    val relativePath: String?,
+    val fileName: String,
+    val title: String?,
+    val artist: String?,
+    val normalizedTitle: String,
+    val normalizedArtist: String,
+    val durationMs: Long,
+    val sizeBytes: Long,
+    val ignoredAtEpochMs: Long,
+)
+
 @Fts4
 @Entity(tableName = "track_search_fts")
 data class TrackSearchFts(

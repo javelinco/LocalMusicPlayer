@@ -38,6 +38,7 @@ fun PlaylistScreen(
     onAdd: (String, List<String>) -> Unit,
     onRemove: (String, String) -> Unit,
     onMove: (String, Int, Int) -> Unit,
+    trackActions: TrackActionCallbacks? = null,
 ) {
     var name by remember { mutableStateOf("") }
     var selectedId by remember { mutableStateOf<String?>(null) }
@@ -75,6 +76,7 @@ fun PlaylistScreen(
                         supportingContent = { Text(if (track == null) "Unavailable — kept in playlist" else track.artist ?: track.fileName) },
                         trailingContent = {
                             Row {
+                                if (track != null && trackActions != null) TrackActionMenu(track, trackActions)
                                 Button(onClick = { onMove(selected.id.value, index, index - 1) }, enabled = index > 0) { Text("↑") }
                                 Button(onClick = { onMove(selected.id.value, index, index + 1) }, enabled = index < selectedEntries.lastIndex) { Text("↓") }
                                 Button(onClick = { onRemove(selected.id.value, entry.entryId) }) { Text("Remove") }
@@ -88,7 +90,12 @@ fun PlaylistScreen(
                 items(tracks, key = TrackEntity::trackId) { track ->
                     ListItem(
                         headlineContent = { Text(track.title ?: track.fileName) },
-                        trailingContent = { Button(onClick = { onAdd(selected.id.value, listOf(track.trackId)) }) { Text("Add") } },
+                        trailingContent = {
+                            Row {
+                                if (trackActions != null) TrackActionMenu(track, trackActions)
+                                Button(onClick = { onAdd(selected.id.value, listOf(track.trackId)) }) { Text("Add") }
+                            }
+                        },
                     )
                 }
             }

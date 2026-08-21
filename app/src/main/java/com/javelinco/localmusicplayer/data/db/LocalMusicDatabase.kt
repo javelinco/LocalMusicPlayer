@@ -7,6 +7,7 @@ import androidx.room.RoomDatabase
     entities = [
         SourceEntity::class,
         TrackEntity::class,
+        IgnoredTrackEntity::class,
         TrackSearchFts::class,
         ScanCheckpointEntity::class,
         ScanErrorEntity::class,
@@ -17,7 +18,7 @@ import androidx.room.RoomDatabase
         SettingsMetadataEntity::class,
         RecentPlayEntity::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = true,
 )
 abstract class LocalMusicDatabase : RoomDatabase() {

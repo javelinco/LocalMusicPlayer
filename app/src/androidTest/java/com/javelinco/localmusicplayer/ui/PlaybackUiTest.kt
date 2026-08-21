@@ -11,6 +11,9 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.media3.common.Player
 import com.javelinco.localmusicplayer.playback.service.PlaybackUiState
 import com.javelinco.localmusicplayer.ui.player.NowPlayingScreen
+import com.javelinco.localmusicplayer.ui.player.QueueScreen
+import com.javelinco.localmusicplayer.ui.library.TrackActionCallbacks
+import com.javelinco.localmusicplayer.data.db.TrackEntity
 import org.junit.Rule
 import org.junit.Test
 
@@ -34,4 +37,25 @@ class PlaybackUiTest {
         compose.onAllNodesWithText("Favorite").assertCountEquals(0)
         compose.onAllNodesWithContentDescription("Music is playing").assertCountEquals(0)
     }
+
+    @Test fun queueRendersPlaybackSnapshotsEvenWhenTheyAreNotInTheLibraryIndex() {
+        val queued = track("hidden", "Still queued")
+        compose.setContent {
+            QueueScreen(
+                queueTracks = listOf(queued),
+                currentMediaId = "hidden",
+                trackActions = noActions(),
+            )
+        }
+
+        compose.onNodeWithText("Still queued").assertIsDisplayed()
+        compose.onNodeWithText("Playing").assertIsDisplayed()
+    }
+
+    private fun noActions() = TrackActionCallbacks({}, {}, {}, {}, {}, {}, {})
+
+    private fun track(id: String, title: String) = TrackEntity(
+        id, "source", "content://music/$id", "$title.mp3", title, "Artist", "Album", "Artist", "Genre",
+        title.lowercase(), "artist", "album", "artist", "genre", 1, 1, 60_000, 1, 1, false,
+    )
 }

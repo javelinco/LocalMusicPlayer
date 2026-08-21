@@ -33,6 +33,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
@@ -44,6 +45,7 @@ import com.javelinco.localmusicplayer.data.db.AlbumSummary
 import com.javelinco.localmusicplayer.data.db.NamedGroupSummary
 import com.javelinco.localmusicplayer.data.db.PlaylistEntryEntity
 import com.javelinco.localmusicplayer.data.db.TrackEntity
+import com.javelinco.localmusicplayer.data.db.IgnoredTrackEntity
 import com.javelinco.localmusicplayer.data.scan.ScanPhase
 import com.javelinco.localmusicplayer.data.scan.ScanProgress
 import com.javelinco.localmusicplayer.data.source.MusicSource
@@ -59,11 +61,13 @@ data class LibraryScreenState(
     val playlists: List<PlaylistSummary> = emptyList(),
     val playlistEntries: List<PlaylistEntryEntity> = emptyList(),
     val sources: List<MusicSource> = emptyList(),
+    val ignoredTracks: List<IgnoredTrackEntity> = emptyList(),
     val scanProgress: ScanProgress? = null,
     val scanMessage: String? = null,
     val searchOpen: Boolean = false,
     val searchQuery: String = "",
     val searchResult: LibrarySearchResult? = null,
+    val requestedArtist: String? = null,
 )
 
 @Suppress("LongParameterList")
@@ -73,6 +77,11 @@ data class LibraryActions(
     val onCloseSearch: () -> Unit = {},
     val onSearch: (String) -> Unit = {},
     val onPlayTrack: (TrackEntity) -> Unit = {},
+    val onPlayNext: (TrackEntity) -> Unit = {},
+    val onAddToQueue: (TrackEntity) -> Unit = {},
+    val onRemoveTrackFromLibrary: (TrackEntity) -> Unit = {},
+    val onRestoreIgnoredTrack: (String) -> Unit = {},
+    val onArtistRequestConsumed: () -> Unit = {},
     val onPlayPlaylist: (String) -> Unit = {},
     val onChooseFolder: () -> Unit = {},
     val onFindAll: () -> Unit = {},
@@ -95,6 +104,8 @@ fun LibraryScreen(state: LibraryScreenState, actions: LibraryActions) {
     var toolsOpen by remember { mutableStateOf(false) }
     var openedGroup by remember(state.selectedView) { mutableStateOf<OpenedMetadataGroup?>(null) }
     var pendingAddition by remember { mutableStateOf<PendingPlaylistAddition?>(null) }
+    var pendingInformation by remember { mutableStateOf<TrackEntity?>(null) }
+    var localRequestedArtist by remember { mutableStateOf<String?>(null) }
 
     fun requestTrackAddition(track: TrackEntity) {
         pendingAddition = PendingPlaylistAddition(track.title ?: track.fileName, listOf(track.trackId))
@@ -105,6 +116,29 @@ fun LibraryScreen(state: LibraryScreenState, actions: LibraryActions) {
             .map(TrackEntity::trackId)
         pendingAddition = PendingPlaylistAddition(group.displayName, trackIds)
     }
+
+    LaunchedEffect(state.requestedArtist, localRequestedArtist, state.artists, state.selectedView) {
+        (localRequestedArtist ?: state.requestedArtist)?.let { normalized ->
+            state.artists.find { it.normalizedName == normalized }?.let { artist ->
+                openedGroup = OpenedMetadataGroup(LibraryView.ARTISTS, artist)
+                localRequestedArtist = null
+                if (state.requestedArtist != null) actions.onArtistRequestConsumed()
+            }
+        }
+    }
+
+    val trackActions = TrackActionCallbacks(
+        onPlayNow = actions.onPlayTrack,
+        onPlayNext = actions.onPlayNext,
+        onAddToQueue = actions.onAddToQueue,
+        onAddToPlaylist = ::requestTrackAddition,
+        onGoToArtist = { track ->
+            localRequestedArtist = track.normalizedArtist
+            actions.onSelectView(LibraryView.ARTISTS)
+        },
+        onShowInformation = { pendingInformation = it },
+        onRemoveFromLibrary = actions.onRemoveTrackFromLibrary,
+    )
 
     Column(Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 10.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -182,6 +216,8 @@ fun LibraryScreen(state: LibraryScreenState, actions: LibraryActions) {
                 onFindAll = actions.onFindAll,
                 onBackgroundScan = actions.onBackgroundScan,
                 onDedicatedScan = actions.onDedicatedScan,
+                ignoredTracks = state.ignoredTracks,
+                onRestoreIgnoredTrack = actions.onRestoreIgnoredTrack,
             )
             return@Column
         }
@@ -198,12 +234,13 @@ fun LibraryScreen(state: LibraryScreenState, actions: LibraryActions) {
                 onPlayTrack = actions.onPlayTrack,
                 onAddTrack = ::requestTrackAddition,
                 onAddAll = { requestGroupAddition(opened.view, opened.group) },
+                trackActions = trackActions,
             )
             return@Column
         }
 
         when (val result = state.searchResult) {
-            is LibrarySearchResult.Tracks -> TrackList(result.items, actions.onPlayTrack, ::requestTrackAddition)
+            is LibrarySearchResult.Tracks -> TrackList(result.items, actions.onPlayTrack, actions = trackActions)
             is LibrarySearchResult.NamedGroups -> MetadataListScreen(
                 groups = result.items,
                 onOpen = { openedGroup = OpenedMetadataGroup(state.selectedView, it) },
@@ -221,6 +258,7 @@ fun LibraryScreen(state: LibraryScreenState, actions: LibraryActions) {
                 actions.onAddTracksToPlaylist,
                 actions.onRemovePlaylistEntry,
                 actions.onMovePlaylistEntry,
+                trackActions,
             )
             null -> LibraryBrowseContent(
                 state = state,
@@ -228,6 +266,7 @@ fun LibraryScreen(state: LibraryScreenState, actions: LibraryActions) {
                 onOpenGroup = { openedGroup = OpenedMetadataGroup(state.selectedView, it) },
                 onAddTrack = ::requestTrackAddition,
                 onAddGroup = { requestGroupAddition(state.selectedView, it) },
+                trackActions = trackActions,
             )
         }
     }
@@ -248,6 +287,14 @@ fun LibraryScreen(state: LibraryScreenState, actions: LibraryActions) {
             onDismiss = { pendingAddition = null },
         )
     }
+    pendingInformation?.let { track ->
+        val source = state.sources.find { it.id.value == track.sourceId }
+        TrackInformationDialog(
+            track = track,
+            sourceDescription = listOfNotNull(source?.label, source?.identity).joinToString(" — ").ifBlank { "Unknown" },
+            onDismiss = { pendingInformation = null },
+        )
+    }
 }
 
 @Composable
@@ -257,9 +304,10 @@ private fun LibraryBrowseContent(
     onOpenGroup: (NamedGroupSummary) -> Unit,
     onAddTrack: (TrackEntity) -> Unit,
     onAddGroup: (NamedGroupSummary) -> Unit,
+    trackActions: TrackActionCallbacks,
 ) {
     when (state.selectedView) {
-        LibraryView.TRACKS -> TrackList(state.tracks, actions.onPlayTrack, onAddTrack)
+        LibraryView.TRACKS -> TrackList(state.tracks, actions.onPlayTrack, actions = trackActions)
         LibraryView.ARTISTS -> MetadataListScreen(state.artists, onOpenGroup, onAddGroup)
         LibraryView.ALBUMS -> AlbumList(state.albums)
         LibraryView.GENRES -> MetadataListScreen(state.genres, onOpenGroup, onAddGroup)
@@ -274,6 +322,7 @@ private fun LibraryBrowseContent(
             actions.onAddTracksToPlaylist,
             actions.onRemovePlaylistEntry,
             actions.onMovePlaylistEntry,
+            trackActions,
         )
     }
 }
@@ -283,6 +332,7 @@ fun TrackList(
     tracks: List<TrackEntity>,
     onPlay: (TrackEntity) -> Unit,
     onAddToPlaylist: ((TrackEntity) -> Unit)? = null,
+    actions: TrackActionCallbacks? = null,
 ) {
     if (tracks.isEmpty()) {
         Text("No scanned MP3s yet.", modifier = Modifier.padding(top = 18.dp))
@@ -329,7 +379,9 @@ fun TrackList(
                             overflow = TextOverflow.Ellipsis,
                         )
                     }
-                    onAddToPlaylist?.let { onAdd ->
+                    if (actions != null) {
+                        TrackActionMenu(track, actions)
+                    } else onAddToPlaylist?.let { onAdd ->
                         IconButton(onClick = { onAdd(track) }) {
                             Icon(
                                 Icons.AutoMirrored.Rounded.PlaylistAdd,

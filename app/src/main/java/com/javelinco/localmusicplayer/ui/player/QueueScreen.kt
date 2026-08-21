@@ -6,15 +6,26 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import com.javelinco.localmusicplayer.data.db.TrackEntity
+import com.javelinco.localmusicplayer.ui.library.TrackActionCallbacks
+import com.javelinco.localmusicplayer.ui.library.TrackActionMenu
 
 @Composable
-fun QueueScreen(tracks: List<TrackEntity>, currentMediaId: String?) {
+fun QueueScreen(
+    queueTracks: List<TrackEntity>,
+    currentMediaId: String?,
+    trackActions: TrackActionCallbacks,
+) {
     LazyColumn {
-        itemsIndexed(tracks, key = { _, it -> it.trackId }) { index, track ->
+        itemsIndexed(queueTracks, key = { index, it -> "$index:${it.trackId}" }) { index, track ->
             ListItem(
                 headlineContent = { Text(track.title ?: track.fileName) },
                 supportingContent = { Text("${index + 1}. ${track.artist ?: "Unknown artist"}") },
-                trailingContent = { if (track.trackId == currentMediaId) Text("Playing") },
+                trailingContent = {
+                    androidx.compose.foundation.layout.Row {
+                        if (track.trackId == currentMediaId) Text("Playing")
+                        TrackActionMenu(track, trackActions)
+                    }
+                },
             )
         }
     }

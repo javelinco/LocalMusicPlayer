@@ -11,7 +11,7 @@ data class BackupManifest(
 ) {
     companion object {
         const val FORMAT = "LocalMusicPlayerBackup"
-        const val CURRENT_SCHEMA_VERSION = 1
+        const val CURRENT_SCHEMA_VERSION = 2
     }
 }
 
@@ -28,6 +28,16 @@ data class BackupFavorite(
     val titleSnapshot: String = "",
     val contentUriSnapshot: String = "",
     val addedAtEpochMs: Long = 0,
+)
+
+@Serializable
+data class BackupIgnoredTrack(
+    val oldTrackId: String,
+    val reference: PortableTrackReference,
+    val title: String? = null,
+    val artist: String? = null,
+    val fileName: String = "",
+    val ignoredAtEpochMs: Long = 0,
 )
 
 @Serializable
@@ -55,6 +65,7 @@ data class BackupUserData(
     val sources: List<BackupSource> = emptyList(),
     val queueSession: String? = null,
     val trackReferences: Map<String, PortableTrackReference> = emptyMap(),
+    val ignoredTracks: List<BackupIgnoredTrack> = emptyList(),
 )
 
 data class BackupBundle(
@@ -64,4 +75,3 @@ data class BackupBundle(
 
 class InvalidBackupException(message: String, cause: Throwable? = null) :
     IllegalArgumentException(message, cause)
-

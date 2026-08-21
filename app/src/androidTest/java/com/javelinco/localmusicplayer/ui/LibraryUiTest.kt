@@ -21,6 +21,7 @@ import com.javelinco.localmusicplayer.ui.library.LibraryScreenState
 import com.javelinco.localmusicplayer.ui.library.LibraryView
 import com.javelinco.localmusicplayer.ui.library.PlaylistScreen
 import com.javelinco.localmusicplayer.ui.library.TrackList
+import com.javelinco.localmusicplayer.ui.library.TrackActionCallbacks
 import com.javelinco.localmusicplayer.playlists.PlaylistSummary
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -81,6 +82,37 @@ class LibraryUiTest {
         compose.runOnIdle { assertEquals("two", playedTrackId) }
     }
 
+    @Test fun trackOverflowExposesTheSevenActionsAndConfirmsRemoval() {
+        var removed = false
+        val first = track("one", "First track")
+        compose.setContent {
+            TrackList(
+                tracks = listOf(first),
+                onPlay = {},
+                actions = TrackActionCallbacks(
+                    onPlayNow = {},
+                    onPlayNext = {},
+                    onAddToQueue = {},
+                    onAddToPlaylist = {},
+                    onGoToArtist = {},
+                    onShowInformation = {},
+                    onRemoveFromLibrary = { removed = true },
+                ),
+            )
+        }
+
+        compose.onNodeWithContentDescription("More actions for First track").performClick()
+        listOf(
+            "Play now", "Play next", "Add to queue", "Add to playlist",
+            "Go to artist", "Track information", "Remove from library",
+        ).forEach { compose.onNodeWithText(it).assertIsDisplayed() }
+        compose.onNodeWithText("Remove from library").performClick()
+        compose.onNodeWithText("The MP3 file will not be deleted or modified.", substring = true).assertIsDisplayed()
+        compose.runOnIdle { assertEquals(false, removed) }
+        compose.onNodeWithText("Remove from library").performClick()
+        compose.runOnIdle { assertEquals(true, removed) }
+    }
+
     @Test fun scanResultCanBeDismissed() {
         var dismissed = false
         compose.setContent {
@@ -114,7 +146,8 @@ class LibraryUiTest {
             )
         }
 
-        compose.onNodeWithContentDescription("Add First track to playlist").performClick()
+        compose.onNodeWithContentDescription("More actions for First track").performClick()
+        compose.onNodeWithText("Add to playlist").performClick()
         compose.onNodeWithText("Road Mix").performClick()
         compose.runOnIdle {
             assertEquals(false, played)
@@ -134,7 +167,8 @@ class LibraryUiTest {
             )
         }
 
-        compose.onNodeWithContentDescription("Add First track to playlist").performClick()
+        compose.onNodeWithContentDescription("More actions for First track").performClick()
+        compose.onNodeWithText("Add to playlist").performClick()
         compose.onNodeWithText("Create a playlist first.").assertIsDisplayed()
         compose.onNodeWithText("Go to playlists").performClick()
         compose.runOnIdle { assertEquals(LibraryView.PLAYLISTS, selectedView) }

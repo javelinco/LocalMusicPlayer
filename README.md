@@ -6,7 +6,7 @@ Music, Please! is a private, offline Android MP3 player for large personal libra
 
 ## What works
 
-- Add a user-selected folder, selected MP3 files, or optionally all device audio.
+- Add one or more user-selected folders, or optionally all device audio.
 - Scan metadata into a Room/FTS catalog designed and tested with 50,000 tracks.
 - Search title, artist, album, genre, filename, or playlist within a remembered Library view for Tracks, Artists, Albums, Genres, and Playlists.
 - Play in the background through Android MediaSession/Media3 with lock-screen, Samsung Galaxy Buds, audio-focus, noisy-route, and wake-lock support.
@@ -15,6 +15,8 @@ Music, Please! is a private, offline Android MP3 player for large personal libra
 - Ordered playlists with duplicates, light/dark/system appearance, and reduced motion. Favorites data remains backup-compatible but is intentionally absent from the current interface.
 - Library-centered source and scan tools: the first source starts a dedicated scan immediately, later sources scan quietly, and dedicated mode exits automatically when scanning finishes.
 - A contextual Home screen shows Now Playing during playback and bounded, fully local recent-track and recent-playlist history otherwise.
+- Every available track has one consistent menu for Play now, Play next, Add to queue, Add to playlist, Go to artist, Track information, and reversible removal from the Library index.
+- Removed tracks stay ignored across scans until restored from Library tools; their MP3 files are never deleted or modified.
 - User-selected, USB-visible ZIP backups with daily automatic rotation, manual backups, validation, safety backups before restore, and conservative cross-phone relinking.
 
 ## Android and installation
@@ -23,7 +25,7 @@ The minimum is Android 13 (API 33); the project targets API 37 and is tested on 
 
 ## Privacy and access
 
-Folder and individual-file modes use Android's Storage Access Framework and do not require broad audio permission. “Find all music on this device” is a separate, explained action that requests `READ_MEDIA_AUDIO`; denying it does not affect selected folders or files. See the exact [permission audit](docs/permissions.md).
+Selected folders use Android's Storage Access Framework and do not require broad audio permission. “Find all music on this device” is a separate, explained action that requests `READ_MEDIA_AUDIO`; denying it does not affect selected folders. See the exact [permission audit](docs/permissions.md).
 
 The application does not request `INTERNET` or `MANAGE_EXTERNAL_STORAGE`. A build-time script rejects unexpected permissions, and another scans packaged DEX files for common networking, advertising, and telemetry libraries.
 

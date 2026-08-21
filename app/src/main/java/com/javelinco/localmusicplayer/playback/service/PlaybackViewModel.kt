@@ -29,7 +29,22 @@ data class PlaybackUiState(
     val durationMs: Long = 0,
     val shuffleEnabled: Boolean = false,
     val repeatMode: Int = Player.REPEAT_MODE_OFF,
+    val queueMediaIds: List<String> = emptyList(),
+    val queueTracks: List<TrackEntity> = emptyList(),
+    val actionMessage: String? = null,
 )
+
+internal fun queueInsertionIndex(
+    currentIndex: Int,
+    itemCount: Int,
+    shuffleEnabled: Boolean,
+    random: (Int) -> Int,
+): Int {
+    if (itemCount == 0 || currentIndex < 0) return 0
+    if (!shuffleEnabled) return itemCount
+    val choices = itemCount - currentIndex
+    return currentIndex + 1 + random(choices)
+}
 
 class PlaybackViewModel(
     application: Application,
@@ -85,6 +100,44 @@ class PlaybackViewModel(
 
     fun togglePlayPause() {
         controller?.let { if (it.isPlaying) it.pause() else it.play() }
+    }
+
+    fun playNext(track: TrackEntity) {
+        val player = controller ?: return
+        if (player.mediaItemCount == 0) {
+            play(track, listOf(track))
+            return
+        }
+        val insertion = (player.currentMediaItemIndex + 1).coerceAtMost(player.mediaItemCount)
+        player.addMediaItem(insertion, MediaItemMapper.toMediaItem(track))
+        val sourceIndex = tracks.indexOfFirst { it.trackId == player.currentMediaItem?.mediaId }
+        val mutable = tracks.toMutableList()
+        mutable.add((sourceIndex + 1).coerceIn(0, mutable.size), track)
+        tracks = mutable
+        update(player)
+        mutableState.value = mutableState.value.copy(actionMessage = "Playing next: ${track.title ?: track.fileName}")
+    }
+
+    fun addToQueue(track: TrackEntity) {
+        val player = controller ?: return
+        if (player.mediaItemCount == 0) {
+            play(track, listOf(track))
+            return
+        }
+        val insertion = queueInsertionIndex(
+            currentIndex = player.currentMediaItemIndex,
+            itemCount = player.mediaItemCount,
+            shuffleEnabled = mutableState.value.shuffleEnabled,
+            random = SecureRandom()::nextInt,
+        )
+        player.addMediaItem(insertion, MediaItemMapper.toMediaItem(track))
+        tracks = tracks + track
+        update(player)
+        mutableState.value = mutableState.value.copy(actionMessage = "Added to queue: ${track.title ?: track.fileName}")
+    }
+
+    fun dismissActionMessage() {
+        mutableState.value = mutableState.value.copy(actionMessage = null)
     }
 
     fun next() {
@@ -151,6 +204,11 @@ class PlaybackViewModel(
             positionMs = player.currentPosition.coerceAtLeast(0),
             durationMs = player.duration.takeIf { it > 0 } ?: 0,
             repeatMode = player.repeatMode,
+            queueMediaIds = (0 until player.mediaItemCount).map { player.getMediaItemAt(it).mediaId },
+            queueTracks = (0 until player.mediaItemCount).mapNotNull { index ->
+                val id = player.getMediaItemAt(index).mediaId
+                tracks.find { it.trackId == id }
+            },
         )
         historyTracker.onPlaybackState(
             mediaId = player.currentMediaItem?.mediaId,

@@ -38,6 +38,8 @@ class LibraryViewModel(private val container: AppContainer) : ViewModel() {
     private val librarySearchEngine = LibrarySearchEngine(libraryDao)
     val tracks = libraryDao.observeAvailableTracks()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    val ignoredTracks = libraryDao.observeIgnoredTracks()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
     val artists = libraryDao.observeArtistGroups()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
     val albums = libraryDao.observeAlbumGroups()
@@ -177,6 +179,14 @@ class LibraryViewModel(private val container: AppContainer) : ViewModel() {
 
     fun movePlaylistEntry(playlistId: String, from: Int, to: Int) {
         viewModelScope.launch { container.playlistRepository.moveEntry(PlaylistId(playlistId), from, to) }
+    }
+
+    fun ignoreTrack(trackId: String) {
+        viewModelScope.launch { libraryDao.ignoreTrack(trackId, System.currentTimeMillis()) }
+    }
+
+    fun restoreIgnoredTrack(ignoreId: String) {
+        viewModelScope.launch { libraryDao.restoreIgnoredTrack(ignoreId) }
     }
 
     fun setTheme(theme: ThemePreference) {

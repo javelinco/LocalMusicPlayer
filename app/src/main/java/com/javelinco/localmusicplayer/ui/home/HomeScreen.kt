@@ -18,12 +18,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.javelinco.localmusicplayer.data.db.RecentPlaylistRow
 import com.javelinco.localmusicplayer.data.db.TrackEntity
+import com.javelinco.localmusicplayer.ui.library.TrackActionCallbacks
+import com.javelinco.localmusicplayer.ui.library.TrackActionMenu
 
 @Composable
 fun HomeScreen(
     recentTracks: List<TrackEntity>,
     recentPlaylists: List<RecentPlaylistRow>,
-    onPlayTrack: (TrackEntity) -> Unit,
+    trackActions: TrackActionCallbacks,
     onPlayPlaylist: (String) -> Unit,
 ) {
     Column(Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 12.dp)) {
@@ -36,7 +38,8 @@ fun HomeScreen(
                         leadingContent = { Icon(Icons.Rounded.History, null) },
                         headlineContent = { Text(track.title ?: track.fileName) },
                         supportingContent = { Text(track.artist ?: "Unknown artist") },
-                        modifier = Modifier.clickable { onPlayTrack(track) },
+                        trailingContent = { TrackActionMenu(track, trackActions) },
+                        modifier = Modifier.clickable { trackActions.onPlayNow(track) },
                     )
                 }
             }

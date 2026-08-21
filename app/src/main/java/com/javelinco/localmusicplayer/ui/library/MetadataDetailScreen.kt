@@ -30,6 +30,7 @@ internal fun MetadataDetailScreen(
     onPlayTrack: (TrackEntity) -> Unit,
     onAddTrack: (TrackEntity) -> Unit,
     onAddAll: () -> Unit,
+    trackActions: TrackActionCallbacks,
 ) {
     Column(Modifier.fillMaxSize()) {
         Row(
@@ -61,6 +62,6 @@ internal fun MetadataDetailScreen(
             Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, null)
             Text("Add all to playlist", modifier = Modifier.padding(start = 8.dp))
         }
-        TrackList(tracks, onPlayTrack, onAddTrack)
+        TrackList(tracks, onPlayTrack, actions = trackActions)
     }
 }

@@ -126,6 +126,33 @@ class LibraryDaoTest {
         assertFalse(libraryDao.track("old")!!.available)
     }
 
+    @Test
+    fun scanBatchCannotMakeAnIgnoredTrackAvailableAgain() = runTest {
+        val ignored = track("ignored", fileName = "Ignored Song.mp3")
+        libraryDao.applyScanBatch(ScanBatch(listOf(ignored), checkpoint()))
+        libraryDao.ignoreTrack("ignored", ignoredAtEpochMs = 20)
+
+        libraryDao.applyScanBatch(
+            ScanBatch(listOf(ignored.copy(modifiedAtEpochMs = 30)), checkpoint(cursor = "next")),
+        )
+
+        assertFalse(libraryDao.track("ignored")!!.available)
+        assertEquals(emptyList<TrackEntity>(), libraryDao.searchTracks("ignored*"))
+    }
+
+    @Test
+    fun scanRelinksPortableIgnoredTrackAfterSourceIdChanges() = runTest {
+        val original = track("old-id", fileName = "Hidden.mp3")
+        libraryDao.applyScanBatch(ScanBatch(listOf(original), checkpoint()))
+        libraryDao.ignoreTrack("old-id", ignoredAtEpochMs = 20)
+        val moved = original.copy(trackId = "new-source:new-id", sourceId = "new-source")
+
+        libraryDao.applyScanBatch(ScanBatch(listOf(moved), checkpoint(cursor = "moved")))
+
+        assertFalse(libraryDao.track("new-source:new-id")!!.available)
+        assertEquals("new-source:new-id", libraryDao.observeIgnoredTracks().first().single().trackId)
+    }
+
     private fun checkpoint(cursor: String = "cursor") = ScanCheckpointEntity(
         sourceId = "source",
         cursor = cursor,

@@ -17,6 +17,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.javelinco.localmusicplayer.data.source.MusicSource
+import com.javelinco.localmusicplayer.data.db.IgnoredTrackEntity
 
 @Composable
 fun SourcesScreen(
@@ -25,6 +26,8 @@ fun SourcesScreen(
     onFindAll: () -> Unit,
     onBackgroundScan: () -> Unit,
     onDedicatedScan: () -> Unit,
+    ignoredTracks: List<IgnoredTrackEntity> = emptyList(),
+    onRestoreIgnoredTrack: (String) -> Unit = {},
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         if (sources.isEmpty()) {
@@ -67,6 +70,22 @@ fun SourcesScreen(
                     ListItem(
                         headlineContent = { Text(source.label) },
                         supportingContent = { Text(source.kind.name.replace('_', ' ').lowercase()) },
+                    )
+                }
+            }
+            Text("Ignored tracks (${ignoredTracks.size})", style = MaterialTheme.typography.titleMedium)
+            if (ignoredTracks.isEmpty()) {
+                Text("No ignored tracks.")
+            } else {
+                ignoredTracks.forEach { ignored ->
+                    ListItem(
+                        headlineContent = { Text(ignored.title ?: ignored.fileName) },
+                        supportingContent = { Text(ignored.artist ?: "Unknown artist") },
+                        trailingContent = {
+                            OutlinedButton(onClick = { onRestoreIgnoredTrack(ignored.ignoreId) }) {
+                                Text("Restore to library")
+                            }
+                        },
                     )
                 }
             }

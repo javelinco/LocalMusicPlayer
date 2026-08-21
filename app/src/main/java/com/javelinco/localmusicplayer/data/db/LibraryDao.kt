@@ -7,6 +7,7 @@ import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.Upsert
 import kotlinx.coroutines.flow.Flow
+import kotlin.math.abs
 
 @Dao
 interface LibraryDao {
@@ -34,6 +35,73 @@ interface LibraryDao {
     @Upsert
     suspend fun upsertTracks(tracks: List<TrackEntity>)
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertIgnoredTrack(track: IgnoredTrackEntity)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertIgnoredTracks(tracks: List<IgnoredTrackEntity>)
+
+    @Query("SELECT * FROM ignored_tracks ORDER BY ignoredAtEpochMs DESC, ignoreId")
+    fun observeIgnoredTracks(): Flow<List<IgnoredTrackEntity>>
+
+    @Query("SELECT * FROM ignored_tracks ORDER BY ignoredAtEpochMs DESC, ignoreId")
+    suspend fun ignoredTracks(): List<IgnoredTrackEntity>
+
+    @Query("SELECT * FROM ignored_tracks WHERE ignoreId = :ignoreId")
+    suspend fun ignoredTrack(ignoreId: String): IgnoredTrackEntity?
+
+    @Query("DELETE FROM ignored_tracks WHERE ignoreId = :ignoreId")
+    suspend fun deleteIgnoredTrack(ignoreId: String)
+
+    @Query("DELETE FROM ignored_tracks")
+    suspend fun deleteIgnoredTracks()
+
+    @Query("UPDATE tracks SET available = :available WHERE trackId = :trackId")
+    suspend fun setTrackAvailability(trackId: String, available: Boolean)
+
+    @Query(
+        "UPDATE ignored_tracks SET trackId = :trackId, sourceId = :sourceId, contentUri = :contentUri " +
+            "WHERE ignoreId = :ignoreId",
+    )
+    suspend fun linkIgnoredTrack(ignoreId: String, trackId: String, sourceId: String, contentUri: String)
+
+    @Transaction
+    suspend fun ignoreTrack(trackId: String, ignoredAtEpochMs: Long) {
+        val track = track(trackId) ?: return
+        insertIgnoredTrack(
+            IgnoredTrackEntity(
+                ignoreId = track.trackId,
+                trackId = track.trackId,
+                sourceId = track.sourceId,
+                contentUri = track.contentUri,
+                relativePath = track.contentUri.substringAfter(':').takeIf(String::isNotBlank),
+                fileName = track.fileName,
+                title = track.title,
+                artist = track.artist,
+                normalizedTitle = track.normalizedTitle,
+                normalizedArtist = track.normalizedArtist,
+                durationMs = track.durationMs,
+                sizeBytes = track.sizeBytes,
+                ignoredAtEpochMs = ignoredAtEpochMs,
+            ),
+        )
+        setTrackAvailability(track.trackId, false)
+    }
+
+    @Transaction
+    suspend fun restoreIgnoredTrack(ignoreId: String) {
+        val ignored = ignoredTrack(ignoreId) ?: return
+        deleteIgnoredTrack(ignoreId)
+        ignored.trackId?.let { setTrackAvailability(it, true) }
+    }
+
+    @Transaction
+    suspend fun replaceIgnoredTracks(tracks: List<IgnoredTrackEntity>) {
+        deleteIgnoredTracks()
+        if (tracks.isNotEmpty()) insertIgnoredTracks(tracks)
+        tracks.mapNotNull(IgnoredTrackEntity::trackId).forEach { setTrackAvailability(it, false) }
+    }
+
     @Query("DELETE FROM track_search_fts WHERE trackId IN (:trackIds)")
     suspend fun deleteSearchRows(trackIds: List<String>)
 
@@ -49,10 +117,20 @@ interface LibraryDao {
     @Transaction
     suspend fun applyScanBatch(batch: ScanBatch) {
         if (batch.tracks.isNotEmpty()) {
-            upsertTracks(batch.tracks)
+            val ignoredMatches = matchIgnoredTracks(batch.tracks, ignoredTracks())
+            ignoredMatches.forEach { (trackId, ignored) ->
+                batch.tracks.find { it.trackId == trackId }?.let { track ->
+                    linkIgnoredTrack(ignored.ignoreId, track.trackId, track.sourceId, track.contentUri)
+                }
+            }
+            val indexedTracks = batch.tracks.map { track ->
+                if (track.trackId in ignoredMatches) track.copy(available = false) else track
+            }
+            upsertTracks(indexedTracks)
             val trackIds = batch.tracks.map(TrackEntity::trackId)
             deleteSearchRows(trackIds)
-            insertSearchRows(batch.tracks.map(TrackSearchFts::from))
+            val searchable = indexedTracks.filter(TrackEntity::available)
+            if (searchable.isNotEmpty()) insertSearchRows(searchable.map(TrackSearchFts::from))
         }
         if (batch.errors.isNotEmpty()) insertScanErrors(batch.errors)
         saveCheckpoint(batch.checkpoint)
@@ -201,4 +279,36 @@ interface LibraryDao {
 
     @Query("UPDATE tracks SET available = 0 WHERE sourceId = :sourceId")
     suspend fun markSourceTracksUnavailable(sourceId: String)
+}
+
+private fun matchIgnoredTracks(
+    tracks: List<TrackEntity>,
+    ignored: List<IgnoredTrackEntity>,
+): Map<String, IgnoredTrackEntity> {
+    val result = linkedMapOf<String, IgnoredTrackEntity>()
+    ignored.forEach { rule ->
+        tracks.find { it.trackId == rule.trackId || it.trackId == rule.ignoreId }?.let {
+            result[it.trackId] = rule
+            return@forEach
+        }
+        rule.relativePath?.let { path ->
+            val exact = tracks.filter { it.contentUri.substringAfter(':').equals(path, ignoreCase = true) }
+            if (exact.size == 1) {
+                result[exact.single().trackId] = rule
+                return@forEach
+            }
+        }
+        val scored = tracks.map { track ->
+            var score = 0
+            if (track.sizeBytes == rule.sizeBytes) score += 4
+            if (abs(track.durationMs - rule.durationMs) <= 2_000) score += 3
+            if (rule.normalizedTitle.isNotBlank() && track.normalizedTitle == rule.normalizedTitle) score += 2
+            if (rule.normalizedArtist.isNotBlank() && track.normalizedArtist == rule.normalizedArtist) score += 1
+            track to score
+        }.filter { it.second >= 5 }
+        val best = scored.maxOfOrNull(Pair<TrackEntity, Int>::second) ?: return@forEach
+        val candidates = scored.filter { it.second == best }
+        if (candidates.size == 1) result[candidates.single().first.trackId] = rule
+    }
+    return result
 }

@@ -41,6 +41,26 @@ class DatabaseMigrationTest {
         }
     }
 
+    @Test
+    fun migrationTwoToThreeAddsIgnoredTracksWithoutLosingData() {
+        helper.createDatabase("migration-2-3", 2).apply {
+            execSQL("INSERT INTO sources VALUES ('source', 'SAF_TREE', 'content://music', 'Music', 1)")
+            execSQL("INSERT INTO playlists VALUES ('playlist', 'Road trip', 1, 2)")
+            close()
+        }
+
+        helper.runMigrationsAndValidate(
+            "migration-2-3",
+            3,
+            true,
+            DatabaseMigrations.MIGRATION_2_3,
+        ).use { migrated ->
+            assertEquals(1, migrated.rowCount("sources"))
+            assertEquals(1, migrated.rowCount("playlists"))
+            assertEquals(0, migrated.rowCount("ignored_tracks"))
+        }
+    }
+
     private fun androidx.sqlite.db.SupportSQLiteDatabase.rowCount(table: String): Int =
         query("SELECT COUNT(*) FROM $table").use { cursor ->
             cursor.moveToFirst()

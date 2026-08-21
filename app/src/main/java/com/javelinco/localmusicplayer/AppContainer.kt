@@ -31,7 +31,10 @@ class AppContainer(context: Context) {
         appContext,
         LocalMusicDatabase::class.java,
         "local-music.db",
-    ).addMigrations(DatabaseMigrations.MIGRATION_1_2).build()
+    ).addMigrations(
+        DatabaseMigrations.MIGRATION_1_2,
+        DatabaseMigrations.MIGRATION_2_3,
+    ).build()
     val sourceRegistry = RoomSourceRegistry(database.libraryDao())
     val libraryRepository = LibraryRepository(database.libraryDao())
     val recentPlayRepository = RecentPlayRepository(database.recentPlayDao())
