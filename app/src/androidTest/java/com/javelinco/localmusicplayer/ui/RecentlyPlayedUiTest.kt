@@ -2,7 +2,10 @@ package com.javelinco.localmusicplayer.ui
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -10,6 +13,8 @@ import com.javelinco.localmusicplayer.data.db.RecentPlaylistRow
 import com.javelinco.localmusicplayer.data.db.TrackEntity
 import com.javelinco.localmusicplayer.home.RecentPlaybackQueue
 import com.javelinco.localmusicplayer.ui.home.HomeScreen
+import com.javelinco.localmusicplayer.ui.home.RECENT_PLAYLIST_CARD_TAG
+import com.javelinco.localmusicplayer.ui.home.RECENT_TRACK_CARD_TAG
 import com.javelinco.localmusicplayer.ui.library.TrackActionCallbacks
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -19,6 +24,36 @@ import org.junit.Test
 class RecentlyPlayedUiTest {
     @get:Rule
     val compose = createComposeRule()
+
+    @Test
+    fun recentItemsRenderAsSeparatedCardsWithUsefulContext() {
+        compose.setContent {
+            MaterialTheme {
+                HomeScreen(
+                    recentTracks = listOf(
+                        track("first", "First song", album = "First album"),
+                        track("second", "Second song", album = "Second album"),
+                    ),
+                    recentPlaylists = listOf(RecentPlaylistRow("mix", "Recent mix", 3)),
+                    trackActions = trackActions(),
+                    onPlayRecentQueue = {},
+                    onPlayPlaylist = {},
+                    onRemoveRecentTrack = {},
+                    onRemoveRecentPlaylist = {},
+                )
+            }
+        }
+
+        compose.onAllNodesWithTag(RECENT_TRACK_CARD_TAG).assertCountEquals(2)
+        compose.onAllNodesWithTag(RECENT_PLAYLIST_CARD_TAG).assertCountEquals(1)
+        compose.onNodeWithText("2 recent").assertIsDisplayed()
+        compose.onNodeWithText("1 recent").assertIsDisplayed()
+        compose.onNodeWithText("First song").assertIsDisplayed()
+        compose.onAllNodesWithText("Artist").assertCountEquals(2)
+        compose.onNodeWithText("First album").assertIsDisplayed()
+        compose.onNodeWithText("Recent mix").assertIsDisplayed()
+        compose.onNodeWithText("3 tracks").assertIsDisplayed()
+    }
 
     @Test
     fun tappingRecentSongForwardsCompleteDisplayedQueue() {
@@ -86,19 +121,19 @@ class RecentlyPlayedUiTest {
         onRemoveFromLibrary = {},
     )
 
-    private fun track(id: String, title: String) = TrackEntity(
+    private fun track(id: String, title: String, album: String = "Album") = TrackEntity(
         trackId = id,
         sourceId = "source",
         contentUri = "content://music/$id",
         fileName = "$id.mp3",
         title = title,
         artist = "Artist",
-        albumTitle = "Album",
+        albumTitle = album,
         albumArtist = "Artist",
         genre = "Genre",
         normalizedTitle = title.lowercase(),
         normalizedArtist = "artist",
-        normalizedAlbumTitle = "album",
+        normalizedAlbumTitle = album.lowercase(),
         normalizedAlbumArtist = "artist",
         normalizedGenre = "genre",
         discNumber = 1,
