@@ -12,8 +12,12 @@ class RoomScanCatalog(
     override suspend fun checkpoint(sourceId: SourceId): String? =
         libraryDao.checkpointForSource(sourceId.value)?.cursor
 
-    override suspend fun existingTrackIds(sourceId: SourceId): Set<String> =
-        libraryDao.trackIdsForSource(sourceId.value).toSet()
+    override suspend fun existingTracks(sourceId: SourceId) =
+        libraryDao.tracksForSource(sourceId.value)
+
+    override suspend fun clearCheckpoint(sourceId: SourceId) {
+        libraryDao.clearCheckpoint(sourceId.value)
+    }
 
     override suspend fun applyBatch(batch: CatalogScanBatch) {
         val previousCount = libraryDao.checkpointForSource(batch.sourceId.value)?.scannedCount ?: 0
@@ -31,8 +35,12 @@ class RoomScanCatalog(
         )
     }
 
-    override suspend fun reconcile(sourceId: SourceId, seenTrackIds: Set<String>) {
-        val missing = libraryDao.trackIdsForSource(sourceId.value).filterNot(seenTrackIds::contains)
-        if (missing.isNotEmpty()) libraryDao.markTracksUnavailable(missing)
+    override suspend fun reconcile(sourceId: SourceId, seenTrackIds: Set<String>): Int {
+        val missing = libraryDao.tracksForSource(sourceId.value)
+            .asSequence()
+            .filter { it.available && it.trackId !in seenTrackIds }
+            .map { it.trackId }
+            .toList()
+        return if (missing.isEmpty()) 0 else libraryDao.markAvailableTracksUnavailable(missing)
     }
 }

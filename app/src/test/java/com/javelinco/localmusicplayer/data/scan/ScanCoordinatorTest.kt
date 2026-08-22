@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -61,6 +62,68 @@ class ScanCoordinatorTest {
         assertEquals(ScanPhase.COMPLETE, coordinator.progress.value?.phase)
     }
 
+    @Test
+    fun fullInventoryReconcilesDeletionDespiteOldCompletedCheckpoint() = runTest {
+        val catalog = RecordingCatalog().apply {
+            checkpoints[source.id.value] = "two"
+            existing += track("one")
+            existing += track("two")
+        }
+        val reader = ListReader(listOf(entry("one", "One.mp3")))
+        val extractor = FakeExtractor()
+        val coordinator = DefaultScanCoordinator(
+            sourceProvider = { listOf(source) },
+            readerFactory = { reader },
+            extractor = extractor,
+            catalog = catalog,
+        )
+
+        coordinator.run(ScanExecutionMode.BACKGROUND)
+
+        assertEquals(listOf<String?>(null), reader.checkpoints)
+        assertEquals(setOf("source:one"), catalog.reconciledTrackIds)
+        assertEquals(1L, coordinator.progress.value?.removed)
+        assertEquals(0, extractor.extractCount)
+        assertNull(catalog.checkpoints[source.id.value])
+    }
+
+    @Test
+    fun unchangedAvailableTrackReusesIndexedMetadata() = runTest {
+        val catalog = RecordingCatalog().apply { existing += track("one") }
+        val extractor = FakeExtractor()
+        val coordinator = DefaultScanCoordinator(
+            sourceProvider = { listOf(source) },
+            readerFactory = { ListReader(listOf(entry("one", "One.mp3"))) },
+            extractor = extractor,
+            catalog = catalog,
+        )
+
+        coordinator.run(ScanExecutionMode.BACKGROUND)
+
+        assertEquals(0, extractor.extractCount)
+        assertEquals(1L, coordinator.progress.value?.found)
+        assertEquals(0L, coordinator.progress.value?.processed)
+    }
+
+    @Test
+    fun changedTrackIsReindexed() = runTest {
+        val catalog = RecordingCatalog().apply {
+            existing += track("one").copy(modifiedAtEpochMs = 0)
+        }
+        val extractor = FakeExtractor()
+        val coordinator = DefaultScanCoordinator(
+            sourceProvider = { listOf(source) },
+            readerFactory = { ListReader(listOf(entry("one", "One.mp3"))) },
+            extractor = extractor,
+            catalog = catalog,
+        )
+
+        coordinator.run(ScanExecutionMode.BACKGROUND)
+
+        assertEquals(1, extractor.extractCount)
+        assertEquals(1L, coordinator.progress.value?.processed)
+    }
+
     private fun entries() = listOf(
         entry("one", "One.mp3"),
         entry("skip", "Notes.txt", "text/plain"),
@@ -78,15 +141,44 @@ class ScanCoordinatorTest {
         1,
     )
 
+    private fun track(id: String) = TrackEntity(
+        trackId = "source:$id",
+        sourceId = source.id.value,
+        contentUri = "content://music/$id",
+        fileName = "${id.replaceFirstChar(Char::uppercase)}.mp3",
+        title = id,
+        artist = null,
+        albumTitle = null,
+        albumArtist = null,
+        genre = null,
+        normalizedTitle = id,
+        normalizedArtist = "",
+        normalizedAlbumTitle = "",
+        normalizedAlbumArtist = "",
+        normalizedGenre = "",
+        discNumber = null,
+        trackNumber = null,
+        durationMs = 10,
+        modifiedAtEpochMs = 1,
+        sizeBytes = 1,
+        available = true,
+    )
+
     private class ListReader(private val entries: List<SourceEntry>) : SourceReader {
+        val checkpoints = mutableListOf<String?>()
+
         override fun enumerate(source: MusicSource, checkpoint: String?): Flow<SourceEntry> = flow {
+            checkpoints += checkpoint
             val start = checkpoint?.let { value -> entries.indexOfFirst { it.stableId == value } + 1 } ?: 0
             entries.drop(start.coerceAtLeast(0)).forEach { emit(it) }
         }
     }
 
     private class FakeExtractor : Mp3MetadataExtractor {
+        var extractCount = 0
+
         override suspend fun extract(entry: SourceEntry): RawMp3Metadata {
+            extractCount += 1
             if (entry.stableId == "bad") error("corrupt")
             return RawMp3Metadata(title = entry.displayName.removeSuffix(".mp3"), durationMs = 10)
         }
@@ -96,12 +188,20 @@ class ScanCoordinatorTest {
 
     private class RecordingCatalog : ScanCatalog {
         val tracks = mutableListOf<TrackEntity>()
+        val existing = mutableListOf<TrackEntity>()
         val errors = mutableListOf<ScanErrorEntity>()
-        private val checkpoints = mutableMapOf<String, String?>()
+        val checkpoints = mutableMapOf<String, String?>()
         var reconciled = false
+        var reconciledTrackIds = emptySet<String>()
         var afterBatch: (suspend () -> Unit)? = null
 
         override suspend fun checkpoint(sourceId: SourceId): String? = checkpoints[sourceId.value]
+
+        override suspend fun existingTracks(sourceId: SourceId): List<TrackEntity> = existing
+
+        override suspend fun clearCheckpoint(sourceId: SourceId) {
+            checkpoints.remove(sourceId.value)
+        }
 
         override suspend fun applyBatch(batch: CatalogScanBatch) {
             tracks += batch.tracks
@@ -110,8 +210,10 @@ class ScanCoordinatorTest {
             afterBatch?.invoke()
         }
 
-        override suspend fun reconcile(sourceId: SourceId, seenTrackIds: Set<String>) {
+        override suspend fun reconcile(sourceId: SourceId, seenTrackIds: Set<String>): Int {
             reconciled = true
+            reconciledTrackIds = seenTrackIds
+            return existing.count { it.available && it.trackId !in seenTrackIds }
         }
     }
 }

@@ -15,6 +15,7 @@ data class ScanProgress(
     val processed: Long = 0,
     val skipped: Long = 0,
     val errors: Long = 0,
+    val removed: Long = 0,
     val determinate: Boolean = false,
 )
 
@@ -27,9 +28,10 @@ data class CatalogScanBatch(
 
 interface ScanCatalog {
     suspend fun checkpoint(sourceId: SourceId): String?
-    suspend fun existingTrackIds(sourceId: SourceId): Set<String> = emptySet()
+    suspend fun existingTracks(sourceId: SourceId): List<TrackEntity> = emptyList()
+    suspend fun clearCheckpoint(sourceId: SourceId) = Unit
     suspend fun applyBatch(batch: CatalogScanBatch)
-    suspend fun reconcile(sourceId: SourceId, seenTrackIds: Set<String>)
+    suspend fun reconcile(sourceId: SourceId, seenTrackIds: Set<String>): Int
 }
 
 interface ScanCoordinator {

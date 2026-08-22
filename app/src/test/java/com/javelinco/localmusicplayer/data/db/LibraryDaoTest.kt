@@ -153,6 +153,33 @@ class LibraryDaoTest {
         assertEquals("new-source:new-id", libraryDao.observeIgnoredTracks().first().single().trackId)
     }
 
+    @Test
+    fun markingMissingTracksCountsOnlyNewlyUnavailableTracks() = runTest {
+        libraryDao.applyScanBatch(
+            ScanBatch(
+                listOf(track("present"), track("missing"), track("already-missing")),
+                checkpoint(),
+            ),
+        )
+        libraryDao.setTrackAvailability("already-missing", false)
+
+        val removed = libraryDao.markAvailableTracksUnavailable(listOf("missing", "already-missing"))
+
+        assertEquals(1, removed)
+        assertTrue(libraryDao.track("present")!!.available)
+        assertFalse(libraryDao.track("missing")!!.available)
+        assertFalse(libraryDao.track("already-missing")!!.available)
+    }
+
+    @Test
+    fun clearingCheckpointRemovesCompletedCursor() = runTest {
+        libraryDao.saveCheckpoint(checkpoint())
+
+        libraryDao.clearCheckpoint("source")
+
+        assertEquals(null, libraryDao.checkpointForSource("source"))
+    }
+
     private fun checkpoint(cursor: String = "cursor") = ScanCheckpointEntity(
         sourceId = "source",
         cursor = cursor,

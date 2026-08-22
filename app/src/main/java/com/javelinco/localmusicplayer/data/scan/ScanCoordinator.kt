@@ -30,14 +30,19 @@ class DefaultScanCoordinator(
     @Volatile
     private var cancellationRequested = false
 
+    @Volatile
+    private var resumeAfterCancellation = false
+
     override suspend fun run(mode: ScanExecutionMode) = runMutex.withLock {
+        val resumeInterruptedScan = resumeAfterCancellation
+        resumeAfterCancellation = false
         cancellationRequested = false
         if (mode == ScanExecutionMode.DEDICATED) runtimeGate.enterDedicated()
         try {
             mutableProgress.value = ScanProgress(ScanPhase.ENUMERATING)
             for (source in sourceProvider().filter(MusicSource::available)) {
                 if (cancellationRequested) break
-                scanSource(source, mode)
+                scanSource(source, mode, resumeInterruptedScan)
             }
             if (!cancellationRequested) {
                 mutableProgress.value = mutableProgress.value?.copy(
@@ -52,24 +57,52 @@ class DefaultScanCoordinator(
 
     override suspend fun cancelAndCheckpoint() {
         cancellationRequested = true
+        resumeAfterCancellation = true
     }
 
-    private suspend fun scanSource(source: MusicSource, mode: ScanExecutionMode) {
-        val tracks = mutableListOf<TrackEntity>()
-        val errors = mutableListOf<ScanErrorEntity>()
-        val seenTrackIds = catalog.existingTrackIds(source.id).toMutableSet()
-        var checkpoint = catalog.checkpoint(source.id)
-        readerFactory(source).enumerate(source, checkpoint)
+    private suspend fun scanSource(
+        source: MusicSource,
+        mode: ScanExecutionMode,
+        resumeInterruptedScan: Boolean,
+    ) {
+        val existingTracks = catalog.existingTracks(source.id).associateBy(TrackEntity::trackId)
+        val checkpoint = if (resumeInterruptedScan) {
+            catalog.checkpoint(source.id)
+        } else {
+            catalog.clearCheckpoint(source.id)
+            null
+        }
+        val entries = mutableListOf<SourceEntry>()
+        readerFactory(source).enumerate(source, null)
             .takeWhile { !cancellationRequested }
             .collect { entry ->
-            if (mode == ScanExecutionMode.BACKGROUND) {
-                runtimeGate.awaitBackgroundWindow()
-                yield()
+                cooperateWithRuntime(mode)
+                entries += entry
+                updateProgress { it.copy(phase = ScanPhase.ENUMERATING, found = it.found + 1) }
             }
-            updateProgress { it.copy(phase = ScanPhase.METADATA, found = it.found + 1) }
-            checkpoint = entry.stableId
+        if (cancellationRequested) return
+
+        val tracks = mutableListOf<TrackEntity>()
+        val errors = mutableListOf<ScanErrorEntity>()
+        val seenTrackIds = entries.asSequence()
+            .filter(SourceEntry::isMp3)
+            .mapTo(mutableSetOf()) { it.trackId }
+        val checkpointIndex = checkpoint?.let { cursor ->
+            entries.indexOfFirst { it.stableId == cursor }.takeIf { it >= 0 }
+        }
+        val processingStart = checkpointIndex?.plus(1) ?: 0
+        var currentCheckpoint: String? = checkpoint
+        var entriesSinceFlush = 0
+        for (entry in entries.drop(processingStart)) {
+            if (cancellationRequested) break
+            cooperateWithRuntime(mode)
+            updateProgress { it.copy(phase = ScanPhase.METADATA) }
+            currentCheckpoint = entry.stableId
+            entriesSinceFlush += 1
             if (!entry.isMp3()) {
                 updateProgress { it.copy(skipped = it.skipped + 1) }
+            } else if (existingTracks[entry.trackId]?.matches(entry) == true) {
+                // The inventory still sees the file and its fingerprint is unchanged.
             } else {
                 runCatching { extractor.extract(entry) }
                     .onSuccess { raw ->
@@ -88,15 +121,23 @@ class DefaultScanCoordinator(
                         updateProgress { it.copy(errors = it.errors + 1) }
                     }
             }
-            if (tracks.size + errors.size >= batchSize || cancellationRequested) {
-                flush(source, tracks, errors, checkpoint)
+            if (entriesSinceFlush >= batchSize || cancellationRequested) {
+                flush(source, tracks, errors, currentCheckpoint)
+                entriesSinceFlush = 0
             }
         }
-        flush(source, tracks, errors, checkpoint)
+        flush(source, tracks, errors, currentCheckpoint)
         if (!cancellationRequested) {
             updateProgress { it.copy(phase = ScanPhase.RECONCILING) }
-            catalog.reconcile(source.id, seenTrackIds)
+            val removed = catalog.reconcile(source.id, seenTrackIds)
+            updateProgress { it.copy(removed = it.removed + removed) }
+            catalog.clearCheckpoint(source.id)
         }
+    }
+
+    private suspend fun cooperateWithRuntime(mode: ScanExecutionMode) {
+        if (mode == ScanExecutionMode.BACKGROUND) runtimeGate.awaitBackgroundWindow()
+        yield()
     }
 
     private suspend fun flush(
@@ -119,6 +160,16 @@ class DefaultScanCoordinator(
 
 private fun SourceEntry.isMp3() =
     mimeType == "audio/mpeg" || displayName.endsWith(".mp3", ignoreCase = true)
+
+private val SourceEntry.trackId: String
+    get() = "${sourceId.value}:$stableId"
+
+private fun TrackEntity.matches(entry: SourceEntry) =
+    available &&
+        contentUri == entry.contentUri &&
+        fileName == entry.displayName &&
+        sizeBytes == (entry.sizeBytes ?: 0) &&
+        modifiedAtEpochMs == (entry.modifiedAtEpochMs ?: 0)
 
 private fun NormalizedTrackMetadata.toTrack(entry: SourceEntry) = TrackEntity(
     trackId = "${entry.sourceId.value}:${entry.stableId}",
