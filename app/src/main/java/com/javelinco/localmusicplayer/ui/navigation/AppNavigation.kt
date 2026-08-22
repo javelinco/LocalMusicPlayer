@@ -3,7 +3,9 @@ package com.javelinco.localmusicplayer.ui.navigation
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Backup
@@ -34,6 +36,7 @@ import com.javelinco.localmusicplayer.data.settings.ThemePreference
 import com.javelinco.localmusicplayer.home.RecentPlaybackQueue
 import com.javelinco.localmusicplayer.playback.service.PlaybackUiState
 import com.javelinco.localmusicplayer.ui.home.HomeScreen
+import com.javelinco.localmusicplayer.ui.components.AppScreenHeader
 import com.javelinco.localmusicplayer.ui.library.BackupScreen
 import com.javelinco.localmusicplayer.ui.library.DedicatedScanScreen
 import com.javelinco.localmusicplayer.ui.library.LibraryActions
@@ -191,7 +194,12 @@ fun AppNavigation(
         },
     ) { padding ->
         Column(Modifier.padding(padding)) {
-            when (current) {
+            AppScreenHeader(
+                title = screenHeaderTitle(current, homeIsPlaying = playback.isPlaying),
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+            )
+            Box(Modifier.fillMaxWidth().weight(1f)) {
+                when (current) {
                 Destination.HOME -> if (playback.isPlaying) {
                     NowPlayingScreen(
                         playback,
@@ -243,10 +251,6 @@ fun AppNavigation(
                 Destination.MUSIC_FOLDERS -> Column(
                     Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 12.dp),
                 ) {
-                    Text(
-                        "Music folders and scanning",
-                        style = androidx.compose.material3.MaterialTheme.typography.headlineMedium,
-                    )
                     SourcesScreen(
                         sources = libraryState.sources,
                         onChooseFolder = libraryActions.onChooseFolder,
@@ -271,6 +275,7 @@ fun AppNavigation(
                     onRestore,
                 )
                 Destination.SETTINGS -> SettingsScreen(settings, onTheme, onReducedMotion)
+                }
             }
         }
     }
@@ -307,7 +312,6 @@ private fun MoreScreen(
     onSettings: () -> Unit,
 ) {
     Column {
-        Text("More", style = androidx.compose.material3.MaterialTheme.typography.headlineMedium)
         ListItem(
             headlineContent = { Text("Music folders and scanning") },
             supportingContent = { Text("Add folders, rescan music, and manage ignored tracks") },
@@ -334,7 +338,6 @@ private fun SettingsScreen(
     onReducedMotion: (Boolean) -> Unit,
 ) {
     Column {
-        Text("Appearance", style = androidx.compose.material3.MaterialTheme.typography.headlineMedium)
         ThemePreference.entries.forEach { theme ->
             ListItem(
                 headlineContent = { Text(theme.name.lowercase().replaceFirstChar(Char::uppercase)) },

@@ -11,6 +11,18 @@ internal enum class Destination {
     SETTINGS,
 }
 
+internal fun screenHeaderTitle(destination: Destination, homeIsPlaying: Boolean): String =
+    when (destination) {
+        Destination.HOME -> if (homeIsPlaying) "Now playing" else "Recently played"
+        Destination.LIBRARY -> "Library"
+        Destination.MORE -> "More"
+        Destination.NOW_PLAYING -> "Now playing"
+        Destination.QUEUE -> "Queue"
+        Destination.MUSIC_FOLDERS -> "Music folders & scanning"
+        Destination.BACKUP -> "Backup & restore"
+        Destination.SETTINGS -> "Appearance"
+    }
+
 internal data class NavigationHistory(
     val current: Destination? = null,
     val previous: List<Destination> = emptyList(),

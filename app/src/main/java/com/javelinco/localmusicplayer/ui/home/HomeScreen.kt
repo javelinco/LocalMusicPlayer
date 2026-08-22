@@ -22,7 +22,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.javelinco.localmusicplayer.data.db.RecentPlaylistRow
 import com.javelinco.localmusicplayer.data.db.TrackEntity
@@ -46,7 +45,6 @@ fun HomeScreen(
     }
     val recentTrackActions = trackActions.copy(onPlayNow = ::playRecent)
     Column(Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 12.dp)) {
-        Text("Recently played", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
         LazyColumn {
             if (recentTracks.isNotEmpty()) {
                 item { Text("Songs", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 18.dp)) }

@@ -155,34 +155,31 @@ fun LibraryScreen(state: LibraryScreenState, actions: LibraryActions) {
 
     Column(Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 10.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text("Library", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-            Row {
-                IconButton(onClick = if (state.searchOpen) actions.onCloseSearch else actions.onOpenSearch) {
-                    Icon(
-                        if (state.searchOpen) Icons.Rounded.Close else Icons.Rounded.Search,
-                        if (state.searchOpen) "Close search" else "Search ${state.selectedView.label}",
-                    )
+            ExposedDropdownMenuBox(expanded = menuExpanded, onExpandedChange = { menuExpanded = it }) {
+                Button(
+                    onClick = { menuExpanded = true },
+                    modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable),
+                ) {
+                    Text(state.selectedView.selectorLabel)
+                    Icon(Icons.Rounded.ArrowDropDown, null)
+                }
+                ExposedDropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
+                    LibraryView.entries.forEach { view ->
+                        DropdownMenuItem(
+                            text = { Text(view.label) },
+                            onClick = {
+                                menuExpanded = false
+                                actions.onSelectView(view)
+                            },
+                        )
+                    }
                 }
             }
-        }
-        ExposedDropdownMenuBox(expanded = menuExpanded, onExpandedChange = { menuExpanded = it }) {
-            Button(
-                onClick = { menuExpanded = true },
-                modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable),
-            ) {
-                Text(state.selectedView.selectorLabel)
-                Icon(Icons.Rounded.ArrowDropDown, null)
-            }
-            ExposedDropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
-                LibraryView.entries.forEach { view ->
-                    DropdownMenuItem(
-                        text = { Text(view.label) },
-                        onClick = {
-                            menuExpanded = false
-                            actions.onSelectView(view)
-                        },
-                    )
-                }
+            IconButton(onClick = if (state.searchOpen) actions.onCloseSearch else actions.onOpenSearch) {
+                Icon(
+                    if (state.searchOpen) Icons.Rounded.Close else Icons.Rounded.Search,
+                    if (state.searchOpen) "Close search" else "Search ${state.selectedView.label}",
+                )
             }
         }
         if (state.searchOpen) {

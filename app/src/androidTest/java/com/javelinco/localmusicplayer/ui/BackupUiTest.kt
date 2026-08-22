@@ -1,11 +1,13 @@
 package com.javelinco.localmusicplayer.ui
 
+import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performScrollTo
 import com.javelinco.localmusicplayer.ui.library.BackupScreen
+import com.javelinco.localmusicplayer.ui.components.AppScreenHeader
 import org.junit.Rule
 import org.junit.Test
 
@@ -15,7 +17,12 @@ class BackupUiTest {
     @Test
     fun noFolderScreenIdentifiesTheAppAndTheFirstStep() {
         compose.setContent {
-            MaterialTheme { BackupScreen(null, emptyList(), null, {}, {}, {}, {}) }
+            MaterialTheme {
+                Column {
+                    AppScreenHeader("Backup & restore")
+                    BackupScreen(null, emptyList(), null, {}, {}, {}, {})
+                }
+            }
         }
 
         compose.onNodeWithText("Music, Please!").assertIsDisplayed()
