@@ -1,5 +1,6 @@
 package com.javelinco.localmusicplayer.ui.navigation
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -22,6 +23,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -113,7 +115,12 @@ fun AppNavigation(
     onTheme: (ThemePreference) -> Unit,
     onReducedMotion: (Boolean) -> Unit,
 ) {
-    var destination by rememberSaveable { mutableStateOf<Destination?>(null) }
+    var navigation by rememberSaveable(
+        stateSaver = listSaver(
+            save = { saveNavigationHistory(it) },
+            restore = { restoreNavigationHistory(it) },
+        ),
+    ) { mutableStateOf(NavigationHistory()) }
     var pendingPlaylistTrack by remember { mutableStateOf<TrackEntity?>(null) }
     var pendingInformationTrack by remember { mutableStateOf<TrackEntity?>(null) }
     var requestedArtist by remember { mutableStateOf<String?>(null) }
@@ -122,8 +129,8 @@ fun AppNavigation(
         return
     }
     LaunchedEffect(recentLoaded, playback.controllerReady) {
-        if (destination == null) {
-            destination = when (chooseInitialPrimaryDestination(
+        if (navigation.current == null) {
+            val initial = when (chooseInitialPrimaryDestination(
                 recentLoaded = recentLoaded,
                 playbackReady = playback.controllerReady,
                 hasRecent = recentTracks.isNotEmpty() || recentPlaylists.isNotEmpty(),
@@ -134,9 +141,16 @@ fun AppNavigation(
                 PrimaryDestination.MORE -> Destination.MORE
                 null -> null
             }
+            if (initial != null) navigation = NavigationHistory(current = initial)
         }
     }
-    val current = destination ?: Destination.LIBRARY
+    fun navigateTo(target: Destination) {
+        navigation = navigation.navigateTo(target)
+    }
+    val current = navigation.resolvedCurrent
+    BackHandler {
+        navigation = navigation.goBack()
+    }
     val trackActions = TrackActionCallbacks(
         onPlayNow = libraryActions.onPlayTrack,
         onPlayNext = libraryActions.onPlayNext,
@@ -145,7 +159,7 @@ fun AppNavigation(
         onGoToArtist = { track ->
             requestedArtist = track.normalizedArtist
             libraryActions.onSelectView(LibraryView.ARTISTS)
-            destination = Destination.LIBRARY
+            navigateTo(Destination.LIBRARY)
         },
         onShowInformation = { pendingInformationTrack = it },
         onRemoveFromLibrary = libraryActions.onRemoveTrackFromLibrary,
@@ -161,17 +175,17 @@ fun AppNavigation(
             Column {
                 MiniPlayer(
                     playback,
-                    onOpen = { destination = Destination.NOW_PLAYING },
+                    onOpen = { navigateTo(Destination.NOW_PLAYING) },
                     onPrevious = onPrevious,
                     onPlayPause = onPlayPause,
                     onNext = onNext,
                 )
                 PrimaryNavigationBar(primary) { selected ->
-                    destination = when (selected) {
+                    navigateTo(when (selected) {
                         PrimaryDestination.HOME -> Destination.HOME
                         PrimaryDestination.LIBRARY -> Destination.LIBRARY
                         PrimaryDestination.MORE -> Destination.MORE
-                    }
+                    })
                 }
             }
         },
@@ -188,7 +202,7 @@ fun AppNavigation(
                         onSeek,
                         onShuffle,
                         onRepeat,
-                        { destination = Destination.QUEUE },
+                        { navigateTo(Destination.QUEUE) },
                     )
                 } else {
                     HomeScreen(
@@ -206,9 +220,9 @@ fun AppNavigation(
                     libraryActions.copy(onArtistRequestConsumed = { requestedArtist = null }),
                 )
                 Destination.MORE -> MoreScreen(
-                    onMusicFolders = { destination = Destination.MUSIC_FOLDERS },
-                    onBackup = { destination = Destination.BACKUP },
-                    onSettings = { destination = Destination.SETTINGS },
+                    onMusicFolders = { navigateTo(Destination.MUSIC_FOLDERS) },
+                    onBackup = { navigateTo(Destination.BACKUP) },
+                    onSettings = { navigateTo(Destination.SETTINGS) },
                 )
                 Destination.NOW_PLAYING -> NowPlayingScreen(
                     playback,
@@ -219,7 +233,7 @@ fun AppNavigation(
                     onSeek,
                     onShuffle,
                     onRepeat,
-                    { destination = Destination.QUEUE },
+                    { navigateTo(Destination.QUEUE) },
                 )
                 Destination.QUEUE -> QueueScreen(
                     playback.queueTracks,
@@ -267,7 +281,7 @@ fun AppNavigation(
             onGoToPlaylists = {
                 pendingPlaylistTrack = null
                 libraryActions.onSelectView(LibraryView.PLAYLISTS)
-                destination = Destination.LIBRARY
+                navigateTo(Destination.LIBRARY)
             },
             onDismiss = { pendingPlaylistTrack = null },
         )

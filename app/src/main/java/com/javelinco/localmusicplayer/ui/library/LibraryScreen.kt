@@ -1,5 +1,6 @@
 package com.javelinco.localmusicplayer.ui.library
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -104,6 +105,14 @@ fun LibraryScreen(state: LibraryScreenState, actions: LibraryActions) {
     var pendingAddition by remember { mutableStateOf<PendingPlaylistAddition?>(null) }
     var pendingInformation by remember { mutableStateOf<TrackEntity?>(null) }
     var localRequestedArtist by remember { mutableStateOf<String?>(null) }
+
+    BackHandler(enabled = openedGroup != null || state.searchOpen) {
+        if (openedGroup != null) {
+            openedGroup = null
+        } else {
+            actions.onCloseSearch()
+        }
+    }
 
     fun requestTrackAddition(track: TrackEntity) {
         pendingAddition = PendingPlaylistAddition(track.title ?: track.fileName, listOf(track.trackId))

@@ -1,5 +1,6 @@
 package com.javelinco.localmusicplayer.ui.library
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -43,6 +44,9 @@ fun PlaylistScreen(
     var name by remember { mutableStateOf("") }
     var selectedId by remember { mutableStateOf<String?>(null) }
     val selected = playlists.find { it.id.value == selectedId }
+    BackHandler(enabled = selected != null) {
+        selectedId = null
+    }
     Column {
         if (selected == null) {
             OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Playlist name") })
