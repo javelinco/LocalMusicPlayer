@@ -60,8 +60,6 @@ internal fun chooseInitialPrimaryDestination(
     else -> PrimaryDestination.LIBRARY
 }
 
-private enum class Destination { HOME, LIBRARY, MORE, NOW_PLAYING, QUEUE, MUSIC_FOLDERS, BACKUP, SETTINGS }
-
 @Composable
 fun PrimaryNavigationBar(selected: PrimaryDestination, onSelect: (PrimaryDestination) -> Unit) {
     NavigationBar {
