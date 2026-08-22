@@ -75,4 +75,56 @@ class NavigationUiTest {
         compose.runOnUiThread { showDedicated(false) }
         compose.onNodeWithText("Where is your music?").assertIsDisplayed()
     }
+
+    @Test fun pausedPlaybackSessionRemainsOnNowPlayingHome() {
+        setNavigationContent(
+            playback = PlaybackUiState(
+                controllerReady = true,
+                connected = true,
+                hasSession = true,
+                currentMediaId = "paused-track",
+                title = "Paused track",
+                artist = "Test artist",
+                isPlaying = false,
+                positionMs = 42_000,
+                durationMs = 180_000,
+            ),
+        )
+
+        compose.onNodeWithText("Now playing").assertIsDisplayed()
+        compose.onNodeWithText("0:42").assertIsDisplayed()
+    }
+
+    private fun setNavigationContent(
+        playback: PlaybackUiState = PlaybackUiState(controllerReady = true, connected = true),
+    ) {
+        compose.setContent {
+            AppNavigation(
+                libraryState = LibraryScreenState(),
+                libraryActions = LibraryActions(),
+                recentTracks = emptyList(),
+                recentPlaylists = listOf(RecentPlaylistRow("mix", "Recent mix", 1)),
+                recentLoaded = true,
+                dedicated = false,
+                settings = SettingsState(),
+                playback = playback,
+                backupNames = emptyList(),
+                status = null,
+                onLeaveDedicated = {},
+                onPrevious = {},
+                onPlayPause = {},
+                onNext = {},
+                onSeek = {},
+                onShuffle = {},
+                onRepeat = {},
+                onChooseBackupFolder = {},
+                onManualBackup = {},
+                onRefreshBackups = {},
+                onRestore = {},
+                onTheme = {},
+                onReducedMotion = {},
+            )
+        }
+        compose.waitForIdle()
+    }
 }
