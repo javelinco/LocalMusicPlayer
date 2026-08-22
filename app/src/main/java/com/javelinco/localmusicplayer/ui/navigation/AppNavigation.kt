@@ -253,6 +253,10 @@ fun AppNavigation(
                         onFindAll = libraryActions.onFindAll,
                         onBackgroundScan = libraryActions.onBackgroundScan,
                         onDedicatedScan = libraryActions.onDedicatedScan,
+                        scanProgress = libraryState.scanProgress,
+                        scanMessage = libraryState.scanMessage,
+                        onPrioritizeScan = libraryActions.onPrioritizeScan,
+                        onDismissScanMessage = libraryActions.onDismissScanMessage,
                         ignoredTracks = libraryState.ignoredTracks,
                         onRestoreIgnoredTrack = libraryActions.onRestoreIgnoredTrack,
                     )

@@ -45,7 +45,6 @@ import com.javelinco.localmusicplayer.data.db.NamedGroupSummary
 import com.javelinco.localmusicplayer.data.db.PlaylistEntryEntity
 import com.javelinco.localmusicplayer.data.db.TrackEntity
 import com.javelinco.localmusicplayer.data.db.IgnoredTrackEntity
-import com.javelinco.localmusicplayer.data.scan.ScanPhase
 import com.javelinco.localmusicplayer.data.scan.ScanProgress
 import com.javelinco.localmusicplayer.data.source.MusicSource
 import com.javelinco.localmusicplayer.library.LibrarySearchResult
@@ -195,31 +194,12 @@ fun LibraryScreen(state: LibraryScreenState, actions: LibraryActions) {
                 modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
             )
         }
-        state.scanProgress?.takeIf { it.phase != ScanPhase.COMPLETE }?.let { progress ->
-            Card(Modifier.fillMaxWidth().padding(top = 10.dp)) {
-                Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    ScanStatus(progress)
-                    Button(onClick = actions.onPrioritizeScan) { Text("Prioritize scan") }
-                }
-            }
-        }
-        state.scanMessage?.let { message ->
-            Card(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(start = 14.dp, end = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        message,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.weight(1f),
-                    )
-                    IconButton(onClick = actions.onDismissScanMessage) {
-                        Icon(Icons.Rounded.Close, "Dismiss scan result")
-                    }
-                }
-            }
-        }
+        ScanFeedback(
+            progress = state.scanProgress,
+            message = state.scanMessage,
+            onPrioritizeScan = actions.onPrioritizeScan,
+            onDismissMessage = actions.onDismissScanMessage,
+        )
         if (shouldShowSourceSetupInLibrary(state.sources.size)) {
             SourcesScreen(
                 sources = state.sources,
@@ -227,6 +207,10 @@ fun LibraryScreen(state: LibraryScreenState, actions: LibraryActions) {
                 onFindAll = actions.onFindAll,
                 onBackgroundScan = actions.onBackgroundScan,
                 onDedicatedScan = actions.onDedicatedScan,
+                scanProgress = state.scanProgress,
+                scanMessage = state.scanMessage,
+                onPrioritizeScan = actions.onPrioritizeScan,
+                onDismissScanMessage = actions.onDismissScanMessage,
                 ignoredTracks = state.ignoredTracks,
                 onRestoreIgnoredTrack = actions.onRestoreIgnoredTrack,
             )

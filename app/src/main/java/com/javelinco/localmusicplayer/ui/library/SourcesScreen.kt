@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.javelinco.localmusicplayer.data.source.MusicSource
 import com.javelinco.localmusicplayer.data.db.IgnoredTrackEntity
+import com.javelinco.localmusicplayer.data.scan.ScanProgress
 
 @Composable
 fun SourcesScreen(
@@ -26,6 +27,10 @@ fun SourcesScreen(
     onFindAll: () -> Unit,
     onBackgroundScan: () -> Unit,
     onDedicatedScan: () -> Unit,
+    scanProgress: ScanProgress? = null,
+    scanMessage: String? = null,
+    onPrioritizeScan: () -> Unit = {},
+    onDismissScanMessage: () -> Unit = {},
     ignoredTracks: List<IgnoredTrackEntity> = emptyList(),
     onRestoreIgnoredTrack: (String) -> Unit = {},
 ) {
@@ -65,6 +70,12 @@ fun SourcesScreen(
                     }
                 }
             }
+            ScanFeedback(
+                progress = scanProgress,
+                message = scanMessage,
+                onPrioritizeScan = onPrioritizeScan,
+                onDismissMessage = onDismissScanMessage,
+            )
             LazyColumn {
                 items(sources, key = { it.id.value }) { source ->
                     ListItem(

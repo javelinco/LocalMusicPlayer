@@ -137,4 +137,4 @@ class ScanSessionManager(
 }
 
 private fun ScanProgress.completionMessage() =
-    "Scan complete · $processed indexed · $skipped skipped · $errors errors"
+    "Scan complete · $found found · $processed indexed · $removed removed · $skipped skipped · $errors errors"

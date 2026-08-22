@@ -31,7 +31,10 @@ class ScanSessionManagerTest {
         assertEquals(listOf(ScanExecutionMode.DEDICATED), coordinator.modes)
         assertEquals(1, playbackStops)
         assertFalse(manager.dedicated.value)
-        assertEquals("Scan complete · 7 indexed · 1 skipped · 0 errors", manager.message.value)
+        assertEquals(
+            "Scan complete · 8 found · 7 indexed · 2 removed · 1 skipped · 0 errors",
+            manager.message.value,
+        )
     }
 
     @Test
@@ -40,7 +43,10 @@ class ScanSessionManagerTest {
         manager.startBackground()
         advanceUntilIdle()
 
-        assertEquals("Scan complete · 7 indexed · 1 skipped · 0 errors", manager.message.value)
+        assertEquals(
+            "Scan complete · 8 found · 7 indexed · 2 removed · 1 skipped · 0 errors",
+            manager.message.value,
+        )
         manager.dismissMessage()
 
         assertNull(manager.message.value)
@@ -161,6 +167,7 @@ class ScanSessionManagerTest {
                 processed = 7,
                 skipped = 1,
                 errors = 0,
+                removed = 2,
                 determinate = true,
             )
         }
